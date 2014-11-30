@@ -3,6 +3,7 @@ use std::rand::{task_rng, Rng};
 
 const BYTE_ID_LEN: uint = 20;
 
+#[deriving(Eq, PartialEq, Clone)]
 pub struct ByteId([u8, ..BYTE_ID_LEN]);
 
 impl ByteId {
@@ -167,6 +168,16 @@ mod tests {
         let id_c = !id_b;
 
         assert_eq!(id_c.byte(3), 0b1111_0000);
+    }
+
+    #[test]
+    fn equal_test() {
+        let id_a = ByteId::random_id();
+        let id_b = ByteId::random_id();
+        let id_c = id_a.clone();
+
+        assert!(id_c == id_a);
+        assert!(!(id_b == id_a));
     }
 
     #[test]

@@ -7,11 +7,12 @@
 use Location;
 use byteid::ByteId;
 
-pub trait SwarmArtifact {
-    fn location(&self) -> Location;
+pub trait SwarmArtifact<L: Location> {
+    fn location(&self) -> &L;
+    fn update_location(&self, location: L);
 }
 
-struct IronSwarmArtifact<L: Location> {
+struct IronSwarmArtifact<L> {
     id: ByteId,
     location: L
 }

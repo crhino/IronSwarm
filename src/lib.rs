@@ -7,7 +7,7 @@ pub mod artifact;
 pub mod swarm;
 
 pub trait Location {
-    fn distance(&Self, other: &Self) -> uint;
+    fn distance(&self, other: &Self) -> uint;
 }
 
 #[test]
