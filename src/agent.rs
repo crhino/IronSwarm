@@ -7,14 +7,22 @@
 // be implemented by the user of the framework in accordance with their specific
 // use case.
 use Location;
-use self::byteid::ByteId;
-mod byteid;
+use byteid::ByteId;
+use std::io::net::ip::SocketAddr;
 
-pub trait SwarmAgent<T: Location> {
-    fn update_location(&mut self, T);
+pub trait ReactToSwarm {
+
 }
 
-pub struct IronSwarmAgent<T> {
-    pub location: T,
-    id: ByteId
+pub trait SwarmAgent {
+    fn location<T: Location>(&self) -> T;
+    fn update_location<T: Location>(&mut self, T);
+    fn id(&self) -> ByteId;
+    fn addr(&self) -> SocketAddr;
+}
+
+struct IronSwarmAgent<T: Location> {
+    location: T,
+    id: ByteId,
+    addr: SocketAddr
 }

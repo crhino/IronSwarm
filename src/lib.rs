@@ -1,7 +1,10 @@
 #![crate_name = "swarm"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-mod agent;
+pub mod agent;
+pub mod byteid;
+pub mod artifact;
+pub mod swarm;
 
 pub trait Location {
     fn distance(&Self, other: &Self) -> uint;
