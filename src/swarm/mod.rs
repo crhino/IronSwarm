@@ -15,19 +15,23 @@
 // - BROADCAST
 use std::vec::Vec;
 use byteid::ByteId;
-// use agent::SwarmAgent;
-// use artifact::SwarmArtifact;
-// use Location;
+use agent::SwarmAgent;
+use artifact::SwarmArtifact;
+use Location;
 
-pub enum SwarmMsg<Ag, Art, L> {
+pub enum SwarmMsg<Ag: SwarmAgent<L>, Art: SwarmArtifact<L>,
+                  L: Location>
+{
     HRTBT(Ag),
-    HRTBTACK(HeartbeatAck<Ag>),
+    HRTBTACK(HeartbeatAck<Ag, L>),
     JOIN(Ag),
     INFO(IronSwarmEvent<Ag, Art, L>),
     BROADCAST(IronSwarmEvent<Ag, Art, L>)
 }
 
-pub enum SwarmEvent<Ag, Art, L> {
+pub enum SwarmEvent<Ag: SwarmAgent<L>, Art: SwarmArtifact<L>,
+                    L: Location>
+{
     Artifact(Art),
     ArtifactGone(Art),
     AvoidLocation(L),
@@ -35,11 +39,13 @@ pub enum SwarmEvent<Ag, Art, L> {
     MaliciousAgent(Ag)
 }
 
-pub struct HeartbeatAck<A> {
+pub struct HeartbeatAck<A: SwarmAgent<L>, L: Location> {
     agents: Vec<A>
 }
 
-pub struct IronSwarmEvent<Ag, Art, L> {
+pub struct IronSwarmEvent<Ag: SwarmAgent<L>, Art: SwarmArtifact<L>,
+                          L: Location>
+{
     from_agent: Ag,
     event: SwarmEvent<Ag, Art, L>
 }
