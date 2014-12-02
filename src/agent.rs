@@ -9,12 +9,7 @@
 use std::boxed::Box;
 use Location;
 use byteid::ByteId;
-use swarm::SwarmMsg;
 use std::io::net::ip::SocketAddr;
-
-pub trait ReactToSwarm {
-    // fn react(&self, msg: &SwarmEvent);
-}
 
 pub trait SwarmAgent<L: Location> {
     fn new(loc: L, addr: SocketAddr) -> Self;
@@ -24,7 +19,7 @@ pub trait SwarmAgent<L: Location> {
     fn address(&self) -> SocketAddr;
 }
 
-struct IronSwarmAgent<L> {
+pub struct IronSwarmAgent<L> {
     loc: L,
     swarm_id: ByteId,
     addr: SocketAddr

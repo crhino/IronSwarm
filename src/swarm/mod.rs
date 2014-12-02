@@ -15,31 +15,78 @@
 // - BROADCAST
 use std::vec::Vec;
 use byteid::ByteId;
-use agent::SwarmAgent;
-use artifact::SwarmArtifact;
+use agent::{SwarmAgent, IronSwarmAgent};
+use artifact::{SwarmArtifact, IronSwarmArtifact};
 use Location;
+use ReactToSwarm;
+use SwarmLocation;
+use std::io::net::ip::{SocketAddr, Ipv4Addr};
 
-pub enum SwarmMsg<'a, L: Location> {
-    HRTBT(Box<SwarmAgent<L>+'a>),
-    HRTBTACK(HeartbeatAck<'a, L>),
-    JOIN(Box<SwarmAgent<L>+'a>),
-    INFO(IronSwarmEvent<'a, L>),
-    BROADCAST(IronSwarmEvent<'a, L>)
+pub struct Swarm<T, Loc, Agn, Art> {
+    actor: T
 }
 
-pub enum SwarmEvent<'a, L: Location> {
-    Artifact(Box<SwarmArtifact<L>+'a>),
-    ArtifactGone(Box<SwarmArtifact<L>+'a>),
-    AvoidLocation(Box<Location+'a>),
-    Converge(Box<Location+'a>),
-    MaliciousAgent(Box<SwarmAgent<L>+'a>)
+impl<T: ReactToSwarm<Loc, Agn, Art>, Loc: Location,
+     Agn: SwarmAgent<Loc>, Art: SwarmArtifact<Loc>>
+     Swarm<T, Loc, Agn, Art>
+{
+    pub fn send_msg(&self, msg: &SwarmMsg<Loc, Agn, Art>) {
+        self.actor.react(msg);
+    }
+
+    pub fn send_artifact(&self, loc: Loc) {
+        let agn_loc = loc.clone();
+        let art: Art = SwarmArtifact::new(loc);
+
+        let ipaddr = Ipv4Addr(127, 0, 0, 0);
+        let p = 1234;
+        let addr = SocketAddr{ ip: ipaddr, port: p };
+
+        let agent: Agn = SwarmAgent::new(agn_loc, addr);
+
+        let msg: SwarmMsg<Loc, Agn, Art> =
+            SwarmMsg::new_artifact_msg(agent, art);
+    }
 }
 
-pub struct HeartbeatAck<'a, L: Location> {
-    agents: Vec<Box<SwarmAgent<L>+'a>>
+enum IronSwarmMsg<Loc, Agn, Art> {
+    HRTBT(Agn),
+    HRTBTACK(HeartbeatAck<Agn>),
+    JOIN(Agn),
+    INFO(SwarmMsg<Loc, Agn, Art>),
+    BROADCAST(SwarmMsg<Loc, Agn, Art>)
 }
 
-pub struct IronSwarmEvent<'a, L: Location> {
-    from_agent: Box<SwarmAgent<L>+'a>,
-    event: SwarmEvent<'a, L>
+struct HeartbeatAck<Agn> {
+    agents: Vec<Agn>
+}
+
+pub enum SwarmEvent<Loc, Agn, Art> {
+    Artifact(Art),
+    ArtifactGone(Art),
+    AvoidLocation(Loc),
+    Converge(Loc),
+    MaliciousAgent(Agn)
+}
+
+pub struct SwarmMsg<Loc, Agn,
+                    Art>
+{
+    from_agent: Agn,
+    event: SwarmEvent<Loc, Agn, Art>
+}
+
+impl<Loc, Agn, Art>
+    SwarmMsg<Loc, Agn, Art>
+{
+    pub fn new_artifact_msg(agent: Agn, art: Art) -> SwarmMsg<Loc, Agn, Art> {
+        SwarmMsg {
+            from_agent: agent,
+            event: SwarmEvent::Artifact(art)
+        }
+    }
+
+    pub fn event<'a>(&'a self) -> &'a SwarmEvent<Loc, Agn, Art> {
+        &self.event
+    }
 }
