@@ -19,15 +19,19 @@ use agent::SwarmAgent;
 use artifact::SwarmArtifact;
 use Location;
 
-pub enum SwarmMsg<'a, L: Location> {
+enum IronSwarmMsg<'a, L> {
     HRTBT(Box<SwarmAgent<L>+'a>),
     HRTBTACK(HeartbeatAck<'a, L>),
     JOIN(Box<SwarmAgent<L>+'a>),
-    INFO(IronSwarmEvent<'a, L>),
-    BROADCAST(IronSwarmEvent<'a, L>)
+    INFO(SwarmMsg<'a, L>),
+    BROADCAST(SwarmMsg<'a, L>)
 }
 
-pub enum SwarmEvent<'a, L: Location> {
+struct HeartbeatAck<'a, L> {
+    agents: Vec<Box<SwarmAgent<L>+'a>>
+}
+
+pub enum SwarmEvent<'a, L> {
     Artifact(Box<SwarmArtifact<L>+'a>),
     ArtifactGone(Box<SwarmArtifact<L>+'a>),
     AvoidLocation(Box<Location+'a>),
@@ -35,11 +39,13 @@ pub enum SwarmEvent<'a, L: Location> {
     MaliciousAgent(Box<SwarmAgent<L>+'a>)
 }
 
-pub struct HeartbeatAck<'a, L: Location> {
-    agents: Vec<Box<SwarmAgent<L>+'a>>
-}
-
-pub struct IronSwarmEvent<'a, L: Location> {
+pub struct SwarmMsg<'a, L> {
     from_agent: Box<SwarmAgent<L>+'a>,
     event: SwarmEvent<'a, L>
+}
+
+impl SwarmMsg<'a, L> {
+    fn event(&self) -> SwarmEvent<'a, L> {
+        self.event
+    }
 }
