@@ -23,18 +23,22 @@ use SwarmLocation;
 use std::io::net::ip::{SocketAddr, Ipv4Addr};
 
 pub struct Swarm<T, Loc, Agn, Art> {
-    actor: T
+    pub actor: T
 }
 
 impl<T: ReactToSwarm<Loc, Agn, Art>, Loc: Location,
      Agn: SwarmAgent<Loc>, Art: SwarmArtifact<Loc>>
      Swarm<T, Loc, Agn, Art>
 {
-    pub fn send_msg(&self, msg: &SwarmMsg<Loc, Agn, Art>) {
+    pub fn new(act: T) -> Swarm<T, Loc, Agn, Art> {
+        Swarm { actor: act }
+    }
+
+    pub fn send_msg(&mut self, msg: &SwarmMsg<Loc, Agn, Art>) {
         self.actor.react(msg);
     }
 
-    pub fn send_artifact(&self, loc: Loc) {
+    pub fn send_artifact(&mut self, loc: Loc) {
         let agn_loc = loc.clone();
         let art: Art = SwarmArtifact::new(loc);
 
@@ -46,6 +50,8 @@ impl<T: ReactToSwarm<Loc, Agn, Art>, Loc: Location,
 
         let msg: SwarmMsg<Loc, Agn, Art> =
             SwarmMsg::new_artifact_msg(agent, art);
+
+        self.send_msg(&msg);
     }
 }
 

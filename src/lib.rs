@@ -15,7 +15,7 @@ pub trait ReactToSwarm<Loc: Location,
                        Agn: SwarmAgent<Loc>,
                        Art: SwarmArtifact<Loc>>
 {
-    fn react(&self, msg: &SwarmMsg<Loc, Agn, Art>);
+    fn react(&mut self, msg: &SwarmMsg<Loc, Agn, Art>);
 }
 
 pub type SwarmLocation<'a> = Box<Location+'a>;
@@ -28,33 +28,42 @@ pub trait Location: Clone {
 mod tests {
     use Location;
     use ReactToSwarm;
-    use swarm::{SwarmMsg};
+    use swarm::{SwarmMsg, Swarm};
     use swarm::SwarmEvent::*;
     use agent::IronSwarmAgent;
     use artifact::IronSwarmArtifact;
+    use std::fmt::Show;
 
-    // impl Location for int {
-    //     fn distance(&self, other: &int) -> uint {
-    //         (*self - *other).abs() as uint
-    //     }
-    // }
+    #[deriving(Show)]
+    struct Tester {
+        artifacts_sent: int
+    }
 
-    struct Agent;
     impl ReactToSwarm<int,
                       IronSwarmAgent<int>,
                       IronSwarmArtifact<int>>
-    for Agent {
-        fn react(&self,
+    for Tester {
+        fn react(&mut self,
             msg: &SwarmMsg<int,
                            IronSwarmAgent<int>,
                            IronSwarmArtifact<int>>) {
             match msg.event() {
-                &Artifact(_) => println!("ARTIFACT"),
+                &Artifact(_) => {
+                    self.artifacts_sent += 1
+                }
                 &ArtifactGone(_) => println!("ARTIFACT GONE"),
                 &AvoidLocation(_) => println!("AVOID LOCATION"),
                 &Converge(_) => println!("CONVERGE"),
                 &MaliciousAgent(_) => println!("MALICIOUS AGENT")
             }
         }
+    }
+
+    #[test]
+    fn send_artifact_msg_test() {
+        let tester = Tester { artifacts_sent: 0 };
+        let mut swarm = Swarm::new(tester);
+        swarm.send_artifact(9);
+        assert_eq!(swarm.actor.artifacts_sent, 1);
     }
 }
