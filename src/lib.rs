@@ -18,8 +18,6 @@ pub trait ReactToSwarm<Loc: Location,
     fn react(&mut self, msg: &SwarmMsg<Loc, Agn, Art>);
 }
 
-pub type SwarmLocation<'a> = Box<Location+'a>;
-
 pub trait Location: Clone {
     fn distance(&self, other: &Self) -> uint;
 }
@@ -33,10 +31,11 @@ mod tests {
     use agent::IronSwarmAgent;
     use artifact::IronSwarmArtifact;
     use std::fmt::Show;
+    use std::io::pipe::PipeStream;
+    use std::io::IoResult;
 
-    #[deriving(Show)]
     struct Tester {
-        artifacts_sent: int
+        artifacts_sent: PipeStream
     }
 
     impl ReactToSwarm<int,
@@ -49,7 +48,7 @@ mod tests {
                            IronSwarmArtifact<int>>) {
             match msg.event() {
                 &Artifact(_) => {
-                    self.artifacts_sent += 1
+                    handle_io_result(self.artifacts_sent.write_u8(1))
                 }
                 &ArtifactGone(_) => println!("ARTIFACT GONE"),
                 &AvoidLocation(_) => println!("AVOID LOCATION"),
@@ -59,11 +58,19 @@ mod tests {
         }
     }
 
+    fn handle_io_result<T>(res: IoResult<T>) -> T {
+        match res {
+            Ok(ret) => ret,
+            Err(err) => panic!("{}\n", err)
+        }
+    }
+
     #[test]
     fn send_artifact_msg_test() {
-        let tester = Tester { artifacts_sent: 0 };
+        let mut pair = handle_io_result(PipeStream::pair());
+        let tester = Tester { artifacts_sent: pair.writer };
         let mut swarm = Swarm::new(tester);
         swarm.send_artifact(9);
-        assert_eq!(swarm.actor.artifacts_sent, 1);
+        assert_eq!(handle_io_result(pair.reader.read_byte()), 1);
     }
 }

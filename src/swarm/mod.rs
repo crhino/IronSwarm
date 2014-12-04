@@ -19,11 +19,10 @@ use agent::{SwarmAgent, IronSwarmAgent};
 use artifact::{SwarmArtifact, IronSwarmArtifact};
 use Location;
 use ReactToSwarm;
-use SwarmLocation;
 use std::io::net::ip::{SocketAddr, Ipv4Addr};
 
 pub struct Swarm<T, Loc, Agn, Art> {
-    pub actor: T
+    actor: T
 }
 
 impl<T: ReactToSwarm<Loc, Agn, Art>, Loc: Location,
