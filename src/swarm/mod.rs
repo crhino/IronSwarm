@@ -14,28 +14,31 @@
 // - INFO
 // - BROADCAST
 use std::vec::Vec;
+use std::boxed::Box;
 use byteid::ByteId;
 use agent::{SwarmAgent, IronSwarmAgent};
 use artifact::{SwarmArtifact, IronSwarmArtifact};
 use Location;
-use ReactToSwarm;
-use SwarmLocation;
 use std::io::net::ip::{SocketAddr, Ipv4Addr};
 
-pub struct Swarm<T, Loc, Agn, Art> {
-    pub actor: T
+pub type ReactFn<'a, Loc, Agn, Art> =
+    Box<FnMut<(SwarmMsg<Loc, Agn, Art>,),()>+'a>;
+
+pub struct Swarm<'a, Loc, Agn, Art> {
+    react: ReactFn<'a, Loc, Agn, Art>
 }
 
-impl<T: ReactToSwarm<Loc, Agn, Art>, Loc: Location,
-     Agn: SwarmAgent<Loc>, Art: SwarmArtifact<Loc>>
-     Swarm<T, Loc, Agn, Art>
+impl<'a, Loc: Location, Agn: SwarmAgent<Loc>, Art: SwarmArtifact<Loc>>
+     Swarm<'a, Loc, Agn, Art>
 {
-    pub fn new(act: T) -> Swarm<T, Loc, Agn, Art> {
-        Swarm { actor: act }
+        pub fn new(func: ReactFn<'a, Loc, Agn, Art>)
+        -> Swarm<'a, Loc, Agn, Art>
+    {
+        Swarm { react: func }
     }
 
-    pub fn send_msg(&mut self, msg: &SwarmMsg<Loc, Agn, Art>) {
-        self.actor.react(msg);
+    pub fn send_msg(&mut self, msg: SwarmMsg<Loc, Agn, Art>) {
+        self.react.call_mut((msg,));
     }
 
     pub fn send_artifact(&mut self, loc: Loc) {
@@ -51,7 +54,7 @@ impl<T: ReactToSwarm<Loc, Agn, Art>, Loc: Location,
         let msg: SwarmMsg<Loc, Agn, Art> =
             SwarmMsg::new_artifact_msg(agent, art);
 
-        self.send_msg(&msg);
+        self.send_msg(msg);
     }
 }
 
