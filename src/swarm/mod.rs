@@ -42,6 +42,35 @@ impl<T: ReactToSwarm<Loc, Agn, Art>, Loc: Location,
 
         self.send_msg(&msg);
     }
+
+    pub fn send_artifact_gone(&mut self, agent: Agn, art: Art) {
+        let msg: SwarmMsg<Loc, Agn, Art> =
+            SwarmMsg::new_artifact_gone_msg(agent, art);
+
+        self.send_msg(&msg);
+    }
+
+    pub fn send_avoid_location(&mut self, agent: Agn, loc: Loc) {
+        let msg: SwarmMsg<Loc, Agn, Art> =
+            SwarmMsg::new_avoid_loc_msg(agent, loc);
+
+        self.send_msg(&msg);
+    }
+
+    pub fn send_converge(&mut self, agent: Agn, loc: Loc) {
+        let msg: SwarmMsg<Loc, Agn, Art> =
+            SwarmMsg::new_converge_msg(agent, loc);
+
+        self.send_msg(&msg);
+    }
+
+    pub fn send_malicious_agent(&mut self, agent: Agn, mal: Agn) {
+        let msg: SwarmMsg<Loc, Agn, Art> =
+            SwarmMsg::new_malicious_agent_msg(agent, mal);
+
+        self.send_msg(&msg);
+    }
+
 }
 
 enum IronSwarmMsg<Loc, Agn, Art> {
@@ -74,14 +103,46 @@ pub struct SwarmMsg<Loc, Agn,
 impl<Loc, Agn, Art>
     SwarmMsg<Loc, Agn, Art>
 {
-    pub fn new_artifact_msg(agent: Agn, art: Art) -> SwarmMsg<Loc, Agn, Art> {
+    fn new_artifact_msg(agent: Agn, art: Art) -> SwarmMsg<Loc, Agn, Art> {
         SwarmMsg {
             from_agent: agent,
             event: SwarmEvent::Artifact(art)
         }
     }
 
+    fn new_artifact_gone_msg(agent: Agn, art: Art) -> SwarmMsg<Loc, Agn, Art> {
+        SwarmMsg {
+            from_agent: agent,
+            event: SwarmEvent::ArtifactGone(art)
+        }
+    }
+
+    fn new_avoid_loc_msg(agent: Agn, loc: Loc) -> SwarmMsg<Loc, Agn, Art> {
+        SwarmMsg {
+            from_agent: agent,
+            event: SwarmEvent::AvoidLocation(loc)
+        }
+    }
+
+    fn new_converge_msg(agent: Agn, loc: Loc) -> SwarmMsg<Loc, Agn, Art> {
+        SwarmMsg {
+            from_agent: agent,
+            event: SwarmEvent::Converge(loc)
+        }
+    }
+
+    fn new_malicious_agent_msg(agent: Agn, mal: Agn) -> SwarmMsg<Loc, Agn, Art> {
+        SwarmMsg {
+            from_agent: agent,
+            event: SwarmEvent::MaliciousAgent(mal)
+        }
+    }
+
     pub fn event<'a>(&'a self) -> &'a SwarmEvent<Loc, Agn, Art> {
         &self.event
+    }
+
+    pub fn from_agent<'a>(&'a self) -> &'a Agn {
+        &self.from_agent
     }
 }
