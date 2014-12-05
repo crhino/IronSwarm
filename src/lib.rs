@@ -28,11 +28,11 @@ mod tests {
     use ReactToSwarm;
     use swarm::{SwarmMsg, Swarm};
     use swarm::SwarmEvent::*;
-    use agent::IronSwarmAgent;
-    use artifact::IronSwarmArtifact;
-    use std::fmt::Show;
+    use agent::{SwarmAgent, IronSwarmAgent};
+    use artifact::{SwarmArtifact, IronSwarmArtifact};
     use std::io::pipe::PipeStream;
     use std::io::IoResult;
+    use std::io::net::ip::{SocketAddr, Ipv4Addr};
 
     struct Tester {
         artifacts_sent: PipeStream
@@ -47,8 +47,9 @@ mod tests {
                            IronSwarmAgent<int>,
                            IronSwarmArtifact<int>>) {
             match msg.event() {
-                &Artifact(_) => {
-                    handle_io_result(self.artifacts_sent.write_u8(1))
+                &Artifact(art) => {
+                    assert_eq!(*art.location(), 9);
+                    handle_io_result(self.artifacts_sent.write_u8(0))
                 }
                 &ArtifactGone(_) => println!("ARTIFACT GONE"),
                 &AvoidLocation(_) => println!("AVOID LOCATION"),
@@ -65,12 +66,19 @@ mod tests {
         }
     }
 
+    fn test_addr() -> SocketAddr {
+        SocketAddr{ ip: Ipv4Addr(127,0,0,0), port: 55555 }
+    }
+
     #[test]
     fn send_artifact_msg_test() {
         let mut pair = handle_io_result(PipeStream::pair());
         let tester = Tester { artifacts_sent: pair.writer };
         let mut swarm = Swarm::new(tester);
-        swarm.send_artifact(9);
-        assert_eq!(handle_io_result(pair.reader.read_byte()), 1);
+        let agent = SwarmAgent::new(9, test_addr());
+        let artifact = SwarmArtifact::new(9);
+
+        swarm.send_artifact(agent, artifact);
+        assert_eq!(handle_io_result(pair.reader.read_byte()), 0);
     }
 }
