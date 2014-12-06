@@ -6,7 +6,6 @@
 // agents. The operations defined here are mostly abstract operations that should
 // be implemented by the user of the framework in accordance with their specific
 // use case.
-use std::boxed::Box;
 use Location;
 use byteid::ByteId;
 use std::io::net::ip::SocketAddr;
