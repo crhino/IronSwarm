@@ -1,15 +1,16 @@
 use std::vec::Vec;
 use swarm::SwarmMsg;
+use agent::SwarmAgent;
 
-enum IronSwarmMsg<Loc, Agn, Art> {
-    HRTBT(Agn),
-    HRTBTACK(Vec<Agn>),
-    JOIN(Agn),
-    INFO(Loc, SwarmMsg<Loc, Agn, Art>),
-    BROADCAST(SwarmMsg<Loc, Agn, Art>)
+enum IronSwarmRPC<Loc> {
+    HRTBT(SwarmAgent<Loc>),
+    HRTBTACK(Vec<SwarmAgent<Loc>>),
+    JOIN(SwarmAgent<Loc>),
+    INFO(Loc, SwarmMsg<Loc>),
+    BROADCAST(SwarmMsg<Loc>)
 }
 
-pub struct SwarmNetwork<Loc, Agn, Art> {
-    local_agent: Agn,
-    neighbors: Vec<Agn>
+pub struct SwarmNetwork<Loc> {
+    local_agent: SwarmAgent<Loc>,
+    neighbors: Vec<SwarmAgent<Loc>>
 }

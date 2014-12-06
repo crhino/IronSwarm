@@ -7,29 +7,23 @@
 use Location;
 use byteid::ByteId;
 
-pub trait SwarmArtifact<L: Location> {
-    fn new(loc: L) -> Self;
-    fn location(&self) -> &L;
-    fn update_location(&mut self, location: L);
-}
-
-pub struct IronSwarmArtifact<L> {
+pub struct SwarmArtifact<L> {
     id: ByteId,
     location: L
 }
 
-impl<L: Location> SwarmArtifact<L> for IronSwarmArtifact<L> {
-    fn new(loc: L) -> IronSwarmArtifact<L> {
-        IronSwarmArtifact {
+impl<L> SwarmArtifact<L> {
+    pub fn new(loc: L) -> SwarmArtifact<L> {
+        SwarmArtifact {
             id: ByteId::random_id(), location: loc
         }
     }
 
-    fn location(&self) -> &L {
+    pub fn location(&self) -> &L {
         &self.location
     }
 
-    fn update_location(&mut self, location: L) {
+    pub fn update_location(&mut self, location: L) {
         self.location = location;
     }
 }

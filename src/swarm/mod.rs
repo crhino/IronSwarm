@@ -13,59 +13,60 @@
 // - JOIN
 // - INFO
 // - BROADCAST
-use agent::{SwarmAgent, IronSwarmAgent};
-use artifact::{SwarmArtifact, IronSwarmArtifact};
+use agent::{SwarmAgent};
+use artifact::{SwarmArtifact};
 use Location;
 use ReactToSwarm;
 
 pub mod network;
 
-pub struct SwarmController<T, Loc, Agn, Art> {
+pub struct SwarmController<T, Loc> {
     actor: T
 }
 
-impl<T: ReactToSwarm<Loc, Agn, Art>, Loc: Location,
-     Agn: SwarmAgent<Loc>, Art: SwarmArtifact<Loc>>
-     SwarmController<T, Loc, Agn, Art>
+impl<T: ReactToSwarm<Loc>, Loc: Location> SwarmController<T, Loc>
 {
-    pub fn new(act: T) -> SwarmController<T, Loc, Agn, Art> {
+    pub fn new(act: T) -> SwarmController<T, Loc> {
         SwarmController { actor: act }
     }
 
-    fn send_msg(&mut self, msg: &SwarmMsg<Loc, Agn, Art>) {
+    fn send_msg(&mut self, msg: &SwarmMsg<Loc>) {
         self.actor.react(msg);
     }
 
-    fn send_artifact(&mut self, agent: Agn, art: Art) {
-        let msg: SwarmMsg<Loc, Agn, Art> =
+    fn send_artifact(&mut self, agent: SwarmAgent<Loc>,
+                     art: SwarmArtifact<Loc>) {
+        let msg: SwarmMsg<Loc> =
             SwarmMsg::new_artifact_msg(agent, art);
 
         self.send_msg(&msg);
     }
 
-    fn send_artifact_gone(&mut self, agent: Agn, art: Art) {
-        let msg: SwarmMsg<Loc, Agn, Art> =
+    fn send_artifact_gone(&mut self, agent: SwarmAgent<Loc>,
+                          art: SwarmArtifact<Loc>) {
+        let msg: SwarmMsg<Loc> =
             SwarmMsg::new_artifact_gone_msg(agent, art);
 
         self.send_msg(&msg);
     }
 
-    fn send_avoid_location(&mut self, agent: Agn, loc: Loc) {
-        let msg: SwarmMsg<Loc, Agn, Art> =
+    fn send_avoid_location(&mut self, agent: SwarmAgent<Loc>, loc: Loc) {
+        let msg: SwarmMsg<Loc> =
             SwarmMsg::new_avoid_loc_msg(agent, loc);
 
         self.send_msg(&msg);
     }
 
-    fn send_converge(&mut self, agent: Agn, loc: Loc) {
-        let msg: SwarmMsg<Loc, Agn, Art> =
+    fn send_converge(&mut self, agent: SwarmAgent<Loc>, loc: Loc) {
+        let msg: SwarmMsg<Loc> =
             SwarmMsg::new_converge_msg(agent, loc);
 
         self.send_msg(&msg);
     }
 
-    fn send_malicious_agent(&mut self, agent: Agn, mal: Agn) {
-        let msg: SwarmMsg<Loc, Agn, Art> =
+    fn send_malicious_agent(&mut self, agent: SwarmAgent<Loc>,
+                                       mal: SwarmAgent<Loc>) {
+        let msg: SwarmMsg<Loc> =
             SwarmMsg::new_malicious_agent_msg(agent, mal);
 
         self.send_msg(&msg);
@@ -73,64 +74,65 @@ impl<T: ReactToSwarm<Loc, Agn, Art>, Loc: Location,
 
 }
 
-pub enum SwarmEvent<Loc, Agn, Art> {
-    Artifact(Art),
-    ArtifactGone(Art),
+pub enum SwarmEvent<Loc> {
+    Artifact(SwarmArtifact<Loc>),
+    ArtifactGone(SwarmArtifact<Loc>),
     AvoidLocation(Loc),
     Converge(Loc),
-    MaliciousAgent(Agn)
+    MaliciousAgent(SwarmAgent<Loc>)
 }
 
-pub struct SwarmMsg<Loc, Agn,
-                    Art>
-{
-    from_agent: Agn,
-    event: SwarmEvent<Loc, Agn, Art>
+pub struct SwarmMsg<Loc> {
+    from_agent: SwarmAgent<Loc>,
+    event: SwarmEvent<Loc>
 }
 
-impl<Loc, Agn, Art>
-    SwarmMsg<Loc, Agn, Art>
+impl<Loc>
+    SwarmMsg<Loc>
 {
-    fn new_artifact_msg(agent: Agn, art: Art) -> SwarmMsg<Loc, Agn, Art> {
+    fn new_artifact_msg(agent: SwarmAgent<Loc>,
+                        art: SwarmArtifact<Loc>) -> SwarmMsg<Loc> {
         SwarmMsg {
             from_agent: agent,
             event: SwarmEvent::Artifact(art)
         }
     }
 
-    fn new_artifact_gone_msg(agent: Agn, art: Art) -> SwarmMsg<Loc, Agn, Art> {
+    fn new_artifact_gone_msg(agent: SwarmAgent<Loc>,
+                             art: SwarmArtifact<Loc>) -> SwarmMsg<Loc> {
         SwarmMsg {
             from_agent: agent,
             event: SwarmEvent::ArtifactGone(art)
         }
     }
 
-    fn new_avoid_loc_msg(agent: Agn, loc: Loc) -> SwarmMsg<Loc, Agn, Art> {
+    fn new_avoid_loc_msg(agent: SwarmAgent<Loc>, loc: Loc) -> SwarmMsg<Loc> {
         SwarmMsg {
             from_agent: agent,
             event: SwarmEvent::AvoidLocation(loc)
         }
     }
 
-    fn new_converge_msg(agent: Agn, loc: Loc) -> SwarmMsg<Loc, Agn, Art> {
+    fn new_converge_msg(agent: SwarmAgent<Loc>, loc: Loc) -> SwarmMsg<Loc> {
         SwarmMsg {
             from_agent: agent,
             event: SwarmEvent::Converge(loc)
         }
     }
 
-    fn new_malicious_agent_msg(agent: Agn, mal: Agn) -> SwarmMsg<Loc, Agn, Art> {
+    fn new_malicious_agent_msg(agent: SwarmAgent<Loc>,
+                               mal: SwarmAgent<Loc>) -> SwarmMsg<Loc> {
         SwarmMsg {
             from_agent: agent,
             event: SwarmEvent::MaliciousAgent(mal)
         }
     }
 
-    pub fn event<'a>(&'a self) -> &'a SwarmEvent<Loc, Agn, Art> {
+    pub fn event<'a>(&'a self) -> &'a SwarmEvent<Loc> {
         &self.event
     }
 
-    pub fn from_agent<'a>(&'a self) -> &'a Agn {
+    pub fn from_agent<'a>(&'a self) -> &'a SwarmAgent<Loc> {
         &self.from_agent
     }
 }
@@ -141,8 +143,8 @@ mod tests {
     use ReactToSwarm;
     use swarm::{SwarmMsg, SwarmController};
     use swarm::SwarmEvent::*;
-    use agent::{SwarmAgent, IronSwarmAgent};
-    use artifact::{SwarmArtifact, IronSwarmArtifact};
+    use agent::{SwarmAgent};
+    use artifact::{SwarmArtifact};
     use std::io::pipe::PipeStream;
     use std::io::IoResult;
     use std::io::net::ip::{SocketAddr, Ipv4Addr};
@@ -162,14 +164,9 @@ mod tests {
         react_writer: PipeStream
     }
 
-    impl ReactToSwarm<int,
-                      IronSwarmAgent<int>,
-                      IronSwarmArtifact<int>>
-    for Tester {
+    impl ReactToSwarm<int> for Tester {
         fn react(&mut self,
-            msg: &SwarmMsg<int,
-                           IronSwarmAgent<int>,
-                           IronSwarmArtifact<int>>) {
+            msg: &SwarmMsg<int>) {
             match msg.event() {
                 &Artifact(art) => {
                     assert_eq!(*art.location(), ART_LOC);
@@ -208,9 +205,7 @@ mod tests {
         SocketAddr{ ip: Ipv4Addr(127,0,0,0), port: 55555 }
     }
 
-    fn swarm_tester() -> (
-        SwarmController<Tester, int, IronSwarmAgent<int>, IronSwarmArtifact<int>>,
-        PipeStream)
+    fn swarm_tester() -> (SwarmController<Tester,int>, PipeStream)
     {
         let pair = handle_io_result(PipeStream::pair());
         let tester = Tester { react_writer: pair.writer };

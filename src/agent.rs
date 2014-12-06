@@ -6,53 +6,44 @@
 // agents. The operations defined here are mostly abstract operations that should
 // be implemented by the user of the framework in accordance with their specific
 // use case.
-use Location;
 use byteid::ByteId;
 use std::io::net::ip::SocketAddr;
 
-pub trait SwarmAgent<L: Location> {
-    fn new(loc: L, addr: SocketAddr) -> Self;
-    fn location(&self) -> &L;
-    fn update_location(&mut self, loc: L);
-    fn id(&self) -> &ByteId;
-    fn address(&self) -> SocketAddr;
-}
-
-pub struct IronSwarmAgent<L> {
+pub struct SwarmAgent<L> {
     loc: L,
     swarm_id: ByteId,
     addr: SocketAddr
 }
 
-impl<L: Location> SwarmAgent<L> for IronSwarmAgent<L> {
-    fn new(location: L, address: SocketAddr) -> IronSwarmAgent<L> {
-        IronSwarmAgent {
+impl<L> SwarmAgent<L> {
+    pub fn new(location: L, address: SocketAddr) -> SwarmAgent<L> {
+        SwarmAgent {
             loc: location,
             swarm_id: ByteId::random_id(),
             addr: address
         }
     }
 
-    fn location(&self) -> &L {
+    pub fn location(&self) -> &L {
        &self.loc
     }
 
-    fn update_location(&mut self, location: L) {
+    pub fn update_location(&mut self, location: L) {
         self.loc = location;
     }
 
-    fn id(&self) -> &ByteId {
+    pub fn id(&self) -> &ByteId {
         &self.swarm_id
     }
 
-    fn address(&self) -> SocketAddr {
+    pub fn address(&self) -> SocketAddr {
         self.addr
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use agent::{SwarmAgent, IronSwarmAgent};
+    use agent::{SwarmAgent};
     use Location;
     use std::io::net::ip::{SocketAddr, Ipv4Addr};
     use std::num::SignedInt;
@@ -68,9 +59,9 @@ mod tests {
         let ipaddr = Ipv4Addr(127, 0, 0, 0);
         let p = 1234;
         let addr = SocketAddr{ ip: ipaddr, port: p };
-        let loc = 9;
+        let loc = 9i;
 
-        let agent: IronSwarmAgent<int> = SwarmAgent::new(loc, addr);
+        let agent = SwarmAgent::new(loc, addr);
     }
 
     #[test]
@@ -78,9 +69,9 @@ mod tests {
         let ipaddr = Ipv4Addr(127, 0, 0, 0);
         let p = 1234;
         let addr = SocketAddr{ ip: ipaddr, port: p };
-        let loc = 9;
+        let loc = 9i;
 
-        let agent: IronSwarmAgent<int> = SwarmAgent::new(loc, addr);
+        let agent = SwarmAgent::new(loc, addr);
         assert_eq!(agent.location(), &loc);
     }
 
@@ -89,10 +80,10 @@ mod tests {
         let ipaddr = Ipv4Addr(127, 0, 0, 0);
         let p = 1234;
         let addr = SocketAddr{ ip: ipaddr, port: p };
-        let loc = 9;
-        let upd_loc = -9;
+        let loc = 9i;
+        let upd_loc = -9i;
 
-        let mut agent: IronSwarmAgent<int> = SwarmAgent::new(loc, addr);
+        let mut agent = SwarmAgent::new(loc, addr);
         agent.update_location(upd_loc);
         assert_eq!(agent.location(), &upd_loc);
     }
@@ -102,9 +93,9 @@ mod tests {
         let ipaddr = Ipv4Addr(127, 0, 0, 0);
         let p = 1234;
         let addr = SocketAddr{ ip: ipaddr, port: p };
-        let loc = 9;
+        let loc = 9i;
 
-        let agent: IronSwarmAgent<int> = SwarmAgent::new(loc, addr);
+        let agent = SwarmAgent::new(loc, addr);
         assert_eq!(agent.id(), &agent.swarm_id);
     }
 
@@ -113,9 +104,9 @@ mod tests {
         let ipaddr = Ipv4Addr(127, 0, 0, 0);
         let p = 1234;
         let addr = SocketAddr{ ip: ipaddr, port: p };
-        let loc = 9;
+        let loc = 9i;
 
-        let agent: IronSwarmAgent<int> = SwarmAgent::new(loc, addr);
+        let agent = SwarmAgent::new(loc, addr);
         assert_eq!(agent.address(), agent.addr);
     }
 }
