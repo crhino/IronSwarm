@@ -1,3 +1,4 @@
+use SwarmSend;
 use std::fmt;
 use std::rand::{task_rng, Rng};
 
@@ -21,6 +22,27 @@ impl ByteId {
     pub fn byte(&self, index: uint) -> u8 {
         let &ByteId(ref data) = self;
         data[index % BYTE_ID_LEN]
+    }
+}
+
+impl SwarmSend for ByteId {
+    fn swarm_encode(id: ByteId, pkt: &mut Vec<u8>) {
+        let ByteId(ref data) = id;
+        pkt.push_all(data);
+    }
+
+    fn swarm_decode(pkt: &[u8]) -> (uint, ByteId) {
+        let mut data = [0u8, ..BYTE_ID_LEN];
+        let slice = pkt.slice_to(BYTE_ID_LEN);
+        let mut i = 0;
+        for &b in slice.iter() {
+            println!("i: {}, b: {}", i, b);
+            data[i] = b;
+            i+=1;
+        }
+
+        let id = ByteId(data);
+        (BYTE_ID_LEN, id)
     }
 }
 
