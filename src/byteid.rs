@@ -4,7 +4,7 @@ use std::rand::{task_rng, Rng};
 
 const BYTE_ID_LEN: uint = 20;
 
-#[deriving(Eq, PartialEq, Clone)]
+#[deriving(Clone, Eq, PartialEq, Show)]
 pub struct ByteId([u8, ..BYTE_ID_LEN]);
 
 impl ByteId {
@@ -36,7 +36,6 @@ impl SwarmSend for ByteId {
         let slice = pkt.slice_to(BYTE_ID_LEN);
         let mut i = 0;
         for &b in slice.iter() {
-            println!("i: {}, b: {}", i, b);
             data[i] = b;
             i+=1;
         }
@@ -104,14 +103,6 @@ impl Not<ByteId> for ByteId {
         ByteId(ret)
     }
 }
-
-impl fmt::Show for ByteId {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let &ByteId(ref data) = self;
-        write!(fmt, "{}", data)
-    }
-}
-
 
 #[cfg(test)]
 mod tests {

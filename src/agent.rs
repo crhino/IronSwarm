@@ -10,6 +10,7 @@ use byteid::ByteId;
 use std::io::net::ip::{Ipv4Addr, Ipv6Addr, SocketAddr};
 use SwarmSend;
 
+#[deriving(Clone, Eq, PartialEq, Show)]
 pub struct SwarmAgent<L> {
     swarm_id: ByteId,
     loc: L,
@@ -98,10 +99,15 @@ impl<L: SwarmSend + Clone> SwarmSend for SwarmAgent<L> {
     }
 
     fn swarm_decode(pkt: &[u8]) -> (uint, SwarmAgent<L>) {
+        let mut pkt_ptr = 0;
         let (loc_idx, id) = SwarmSend::swarm_decode(pkt);
+        pkt_ptr += loc_idx;
         let (addr_idx, loc) = SwarmSend::swarm_decode(pkt.slice_from(loc_idx));
+        pkt_ptr += addr_idx;
         let (end, addr) = SwarmSend::swarm_decode(pkt.slice_from(loc_idx + addr_idx));
-        (end, SwarmAgent {
+        pkt_ptr += end;
+
+        (pkt_ptr, SwarmAgent {
             swarm_id: id,
             loc: loc,
             addr: addr
