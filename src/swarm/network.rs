@@ -6,15 +6,6 @@ use agent::SwarmAgent;
 use std::io::net::ip::{ToSocketAddr};
 use std::io::net::udp::UdpSocket;
 use std::io::IoResult;
-// use std::hash::RandomSipHasher;
-// use std::mem::transmute;
-
-const HRTBT_MAGIC: u8 = 0b0000_0001;
-const HRTBTACK_MAGIC: u8 = 0b0000_0010;
-const JOIN_MAGIC: u8 = 0b0000_0011;
-const INFO_MAGIC: u8 = 0b0000_0100;
-const BROADCAST_MAGIC: u8 = 0b0000_0101;
-const END_MAGIC: u8 = 0b1111_1111;
 
 #[deriving(Clone, Eq, PartialEq, Show, Decodable, Encodable)]
 enum IronSwarmRPC<Loc> {
@@ -65,11 +56,6 @@ impl<Loc> SwarmNetwork<Loc> {
     fn send_heartbeat(&self, agn: SwarmAgent<Loc>) -> IoResult<()> {
         panic!("not implemented")
     }
-}
-
-fn assert_end_magic(pkt_end: u8) {
-    assert!(pkt_end == END_MAGIC,
-            "Could not find END_MAGIC value, unknown decoded values: {}", pkt_end)
 }
 
 #[cfg(test)]

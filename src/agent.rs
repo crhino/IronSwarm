@@ -48,22 +48,6 @@ impl<L> SwarmAgent<L> {
     }
 }
 
-fn u16_to_u8s(n: u16) -> (u8, u8) {
-    let lower = n as u8;
-    let upper = (n >> 8) as u8;
-    (upper, lower)
-}
-
-fn u8s_to_u16((u,l): (u8,u8)) -> u16 {
-    let upper = (u as u16) << 8;
-    let lower = (l as u16);
-    upper | lower
-}
-
-// fn push_u8_tuple((a,b): (u8, u8), pkt: &mut Vec<u8>) {
-//     pkt.push(a); pkt.push(b);
-// }
-
 impl<E, S:Encoder<E>> Encodable<S,E> for SwarmAddr {
     fn encode(&self, s: &mut S) -> Result<(),E> {
         let &SwarmAddr(ref addr) = self;
@@ -102,30 +86,11 @@ mod tests {
     use Location;
     use std::io::net::ip::{SocketAddr, Ipv4Addr};
     use std::num::SignedInt;
-    use std::vec::Vec;
-    use std::path::BytesContainer;
-    use super::{u16_to_u8s, u8s_to_u16};
 
     impl Location for int {
         fn distance(&self, other: &int) -> uint {
             (*self - *other).abs() as uint
         }
-    }
-
-    #[test]
-    fn u16_to_u8s_test() {
-        let n = 0b1111_0000_0000_1111;
-        let (a,b) = u16_to_u8s(n);
-        assert_eq!(a, 0b1111_0000);
-        assert_eq!(b, 0b0000_1111);
-    }
-
-    #[test]
-    fn u8s_to_u16_test() {
-        let u = 0b1111_0000;
-        let l = 0b0000_1111;
-        let n = u8s_to_u16((u,l));
-        assert_eq!(n, 0b1111_0000_0000_1111);
     }
 
     #[test]

@@ -85,18 +85,6 @@ pub enum SwarmEvent<Loc> {
     MaliciousAgent(SwarmAgent<Loc>)
 }
 
-const ART_MAGIC: u8 = 0b0001_0000;
-const ARTGONE_MAGIC: u8 = 0b0011_0000;
-const AVDLOC_MAGIC: u8 = 0b0100_0000;
-const CONV_MAGIC: u8 = 0b0101_0100;
-const MALAGN_MAGIC: u8 = 0b0000_0000;
-const EVT_END_MAGIC: u8 = 0b1111_0000;
-
-fn assert_end_magic(pkt_end: u8) {
-    assert!(pkt_end == EVT_END_MAGIC,
-            "Could not find EVT_END_MAGIC value, unknown decoded values: {}", pkt_end)
-}
-
 #[deriving(Clone, Eq, PartialEq, Show, Decodable, Encodable)]
 pub struct SwarmMsg<Loc> {
     from_agent: SwarmAgent<Loc>,
