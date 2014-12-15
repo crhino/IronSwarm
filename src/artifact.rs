@@ -4,30 +4,14 @@
 // discovered by Agents locally and knowledge of Artifacts is dispersed throughout
 // the Swarm using either the INFO or BROADCAST RPC, depending on the associated
 // importance of a particular Artifact.
+extern crate serialize;
 use Location;
 use byteid::ByteId;
-use SwarmSend;
 
-#[deriving(Clone, Eq, PartialEq, Show)]
+#[deriving(Clone, Eq, PartialEq, Show, Decodable, Encodable)]
 pub struct SwarmArtifact<L> {
     id: ByteId,
     location: L
-}
-
-impl<L: SwarmSend + Clone> SwarmSend for SwarmArtifact<L> {
-    fn swarm_encode(art: SwarmArtifact<L>, pkt: &mut Vec<u8>) {
-        SwarmSend::swarm_encode(art.id().clone(), pkt);
-        SwarmSend::swarm_encode(art.location().clone(), pkt);
-    }
-
-    fn swarm_decode(pkt: &[u8]) -> (uint, SwarmArtifact<L>) {
-        let mut pkt_ptr = 0;
-        let (loc_idx, id) = SwarmSend::swarm_decode(pkt);
-        pkt_ptr += loc_idx;
-        let (end, loc) = SwarmSend::swarm_decode(pkt.slice_from(loc_idx));
-        pkt_ptr += end;
-        (pkt_ptr, SwarmArtifact { id: id, location: loc })
-    }
 }
 
 impl<L> SwarmArtifact<L> {
@@ -52,20 +36,19 @@ impl<L> SwarmArtifact<L> {
 
 #[cfg(test)]
 mod test {
-    use SwarmSend;
+    extern crate bincode;
     use artifact::SwarmArtifact;
     use std::vec::Vec;
     use std::path::BytesContainer;
 
     #[test]
-    fn swarm_send_test() {
+    fn bincode_test() {
         let loc = 9i;
 
         let art = SwarmArtifact::new(loc);
-        let mut vec = Vec::new();
-        let encoded = SwarmSend::swarm_encode(art, &mut vec);
-        let (_, dec_art): (uint, SwarmArtifact<int>) =
-                            SwarmSend::swarm_decode(vec.container_as_bytes());
+        let encoded = bincode::encode(&art).ok().unwrap();
+        let dec_art: SwarmArtifact<int> =
+            bincode::decode(encoded).ok().unwrap();
 
         assert_eq!(art.location(), dec_art.location());
         assert_eq!(art.id(), dec_art.id());

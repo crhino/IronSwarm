@@ -3,3 +3,7 @@
 name = "swarm"
 version = "0.0.1"
 authors = ["crhino <piraino.chris@gmail.com>"]
+
+[dependencies.bincode]
+
+git = "https://github.com/TyOverby/bincode"

@@ -1,4 +1,5 @@
-use SwarmSend;
+extern crate serialize;
+use serialize::{Encoder, Encodable, Decoder, Decodable};
 use std::fmt;
 use std::rand::{task_rng, Rng};
 
@@ -25,23 +26,24 @@ impl ByteId {
     }
 }
 
-impl SwarmSend for ByteId {
-    fn swarm_encode(id: ByteId, pkt: &mut Vec<u8>) {
-        let ByteId(ref data) = id;
-        pkt.push_all(data);
+impl<E, S:Encoder<E>> Encodable<S,E> for ByteId {
+    fn encode(&self, s: &mut S) -> Result<(),E> {
+        let &ByteId(ref data) = self;
+        for &n in data.iter() {
+            try!(s.emit_u8(n))
+        }
+        Ok(())
     }
+}
 
-    fn swarm_decode(pkt: &[u8]) -> (uint, ByteId) {
+impl<E, D:Decoder<E>> Decodable<D,E> for ByteId {
+    fn decode(d: &mut D) -> Result<ByteId,E> {
         let mut data = [0u8, ..BYTE_ID_LEN];
-        let slice = pkt.slice_to(BYTE_ID_LEN);
-        let mut i = 0;
-        for &b in slice.iter() {
-            data[i] = b;
-            i+=1;
+        for i in range(0u, BYTE_ID_LEN) {
+            data[i] = try!(d.read_u8());
         }
 
-        let id = ByteId(data);
-        (BYTE_ID_LEN, id)
+        Ok(ByteId(data))
     }
 }
 

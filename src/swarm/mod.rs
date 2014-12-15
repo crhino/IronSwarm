@@ -13,11 +13,12 @@
 // - JOIN
 // - INFO
 // - BROADCAST
+extern crate serialize;
+
 use agent::{SwarmAgent};
 use artifact::{SwarmArtifact};
 use Location;
 use ReactToSwarm;
-use SwarmSend;
 
 pub mod network;
 
@@ -75,7 +76,7 @@ impl<T: ReactToSwarm<Loc>, Loc: Location> SwarmController<T, Loc>
 
 }
 
-#[deriving(Clone, Eq, PartialEq, Show)]
+#[deriving(Clone, Eq, PartialEq, Show, Decodable, Encodable)]
 pub enum SwarmEvent<Loc> {
     Artifact(SwarmArtifact<Loc>),
     ArtifactGone(SwarmArtifact<Loc>),
@@ -96,113 +97,10 @@ fn assert_end_magic(pkt_end: u8) {
             "Could not find EVT_END_MAGIC value, unknown decoded values: {}", pkt_end)
 }
 
-impl<Loc: SwarmSend + Clone> SwarmSend for SwarmEvent<Loc> {
-    fn swarm_encode(evt: SwarmEvent<Loc>, pkt: &mut Vec<u8>) {
-        match evt {
-            SwarmEvent::Artifact(art) => {
-                pkt.push(ART_MAGIC);
-                SwarmSend::swarm_encode(art, pkt);
-            }
-            SwarmEvent::ArtifactGone(art) => {
-                pkt.push(ARTGONE_MAGIC);
-                SwarmSend::swarm_encode(art, pkt);
-            }
-            SwarmEvent::AvoidLocation(loc) => {
-                pkt.push(AVDLOC_MAGIC);
-                SwarmSend::swarm_encode(loc, pkt);
-            }
-            SwarmEvent::Converge(loc) => {
-                pkt.push(CONV_MAGIC);
-                SwarmSend::swarm_encode(loc, pkt);
-            }
-            SwarmEvent::MaliciousAgent(agn) => {
-                pkt.push(MALAGN_MAGIC);
-                SwarmSend::swarm_encode(agn, pkt);
-            }
-        }
-        pkt.push(EVT_END_MAGIC)
-    }
-
-    fn swarm_decode(pkt: &[u8]) -> (uint, SwarmEvent<Loc>) {
-        let mut pkt_ptr = 0;
-        let magic = pkt[pkt_ptr];
-        pkt_ptr += 1;
-
-        match magic {
-            ART_MAGIC => {
-                let (idx, art): (uint, SwarmArtifact<Loc>) =
-                                 SwarmSend::swarm_decode(pkt.slice_from(pkt_ptr));
-                pkt_ptr += idx;
-                assert_end_magic(pkt[pkt_ptr]);
-                pkt_ptr += 1;
-
-                (pkt_ptr, SwarmEvent::Artifact(art))
-            }
-            ARTGONE_MAGIC => {
-                let (idx, art): (uint, SwarmArtifact<Loc>) =
-                                 SwarmSend::swarm_decode(pkt.slice_from(pkt_ptr));
-                pkt_ptr += idx;
-                assert_end_magic(pkt[pkt_ptr]);
-                pkt_ptr += 1;
-
-                (pkt_ptr, SwarmEvent::ArtifactGone(art))
-            }
-            AVDLOC_MAGIC => {
-                let (idx, loc): (uint, Loc) =
-                                 SwarmSend::swarm_decode(pkt.slice_from(pkt_ptr));
-                pkt_ptr += idx;
-                assert_end_magic(pkt[pkt_ptr]);
-                pkt_ptr += 1;
-
-                (pkt_ptr, SwarmEvent::AvoidLocation(loc))
-            }
-            CONV_MAGIC => {
-                let (idx, loc): (uint, Loc) =
-                                 SwarmSend::swarm_decode(pkt.slice_from(pkt_ptr));
-                pkt_ptr += idx;
-
-                assert_end_magic(pkt[pkt_ptr]);
-                pkt_ptr += 1;
-
-                (pkt_ptr, SwarmEvent::Converge(loc))
-            }
-            MALAGN_MAGIC => {
-                let (idx, agn): (uint, SwarmAgent<Loc>) =
-                                 SwarmSend::swarm_decode(pkt.slice_from(pkt_ptr));
-                pkt_ptr += idx;
-                assert_end_magic(pkt[pkt_ptr]);
-                pkt_ptr += 1;
-
-                (pkt_ptr, SwarmEvent::MaliciousAgent(agn))
-            }
-            _ => panic!("Unkown magic number: {}", magic)
-        }
-    }
-}
-
-#[deriving(Clone, Eq, PartialEq, Show)]
+#[deriving(Clone, Eq, PartialEq, Show, Decodable, Encodable)]
 pub struct SwarmMsg<Loc> {
     from_agent: SwarmAgent<Loc>,
     event: SwarmEvent<Loc>
-}
-
-impl<Loc: SwarmSend + Clone> SwarmSend for SwarmMsg<Loc> {
-    fn swarm_encode(msg: SwarmMsg<Loc>, pkt: &mut Vec<u8>) {
-        SwarmSend::swarm_encode(msg.from_agent, pkt);
-        SwarmSend::swarm_encode(msg.event, pkt);
-    }
-
-    fn swarm_decode(pkt: &[u8]) -> (uint, SwarmMsg<Loc>) {
-        let mut pkt_ptr = 0;
-        let (idx, agn): (uint, SwarmAgent<Loc>) =
-                         SwarmSend::swarm_decode(pkt);
-        pkt_ptr += idx;
-
-        let (idx, evt): (uint, SwarmEvent<Loc>) =
-                         SwarmSend::swarm_decode(pkt.slice_from(pkt_ptr));
-        pkt_ptr += idx;
-        (pkt_ptr, SwarmMsg { from_agent: agn, event: evt })
-    }
 }
 
 impl<Loc> SwarmMsg<Loc> {
