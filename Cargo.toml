@@ -6,4 +6,4 @@ authors = ["crhino <piraino.chris@gmail.com>"]
 
 [dependencies.bincode]
 
-git = "https://github.com/TyOverby/bincode"
+git = "https://github.com/crhino/bincode"
