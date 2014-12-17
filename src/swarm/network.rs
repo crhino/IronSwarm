@@ -1,11 +1,15 @@
 extern crate serialize;
 
+use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::vec::Vec;
 use swarm::SwarmMsg;
 use agent::SwarmAgent;
 use std::io::net::ip::{ToSocketAddr};
 use std::io::net::udp::UdpSocket;
-use std::io::IoResult;
+use std::io::{IoResult, IoError, BufReader};
+use bincode::{decode_from, encode_into};
+use bincode::DecoderReader;
+use bincode::EncoderWriter;
 
 #[deriving(Clone, Eq, PartialEq, Show, Decodable, Encodable)]
 enum IronSwarmRPC<Loc> {
@@ -17,6 +21,7 @@ enum IronSwarmRPC<Loc> {
 }
 
 pub struct SwarmNetwork<Loc> {
+    recv_buf: [u8, ..1024],
     socket: UdpSocket,
     local_agent: SwarmAgent<Loc>,
     neighbors: Vec<SwarmAgent<Loc>>
@@ -36,6 +41,7 @@ impl<Loc> SwarmNetwork<Loc> {
         let agent = SwarmAgent::new(loc, addr);
 
         SwarmNetwork {
+            recv_buf: [0u8, ..1024],
             socket: socket,
             local_agent: agent,
             neighbors: Vec::new()
@@ -48,9 +54,15 @@ impl<Loc> SwarmNetwork<Loc> {
 }
 
 // Implement sending and receiving of IronSwarmRPC through the UDP socket.
-impl<Loc> SwarmNetwork<Loc> {
-    fn recv_msg(&self) -> IoResult<IronSwarmRPC<Loc>> {
-        panic!("not implemented")
+impl<'a,Loc:Decodable<DecoderReader<'a,BufReader<'a>>, IoError>> SwarmNetwork<Loc> {
+    pub fn recv_msg(&'a mut self) -> IoResult<IronSwarmRPC<Loc>> {
+        match self.socket.recv_from(&mut self.recv_buf) {
+            Ok((amt, _)) => {
+                let rpc = try!(decode_from(&mut BufReader::new(&self.recv_buf)));
+                Ok(rpc)
+            }
+            Err(e) => panic!("Could not recv a packet: {}", e)
+        }
     }
 
     fn send_heartbeat(&self, agn: SwarmAgent<Loc>) -> IoResult<()> {
@@ -65,21 +77,34 @@ mod test {
     use agent::{SwarmAgent};
     use artifact::SwarmArtifact;
     use swarm::SwarmMsg;
-    use std::path::BytesContainer;
     use Location;
     use std::io::net::ip::{SocketAddr, Ipv4Addr};
+    use std::io::net::udp::UdpSocket;
+    use std::io::IoResult;
     use swarm::network::IronSwarmRPC;
+    use std::path::BytesContainer;
     use std::vec::Vec;
+    use super::SwarmNetwork;
 
 
     fn bincode_rpc_tester(rpc: IronSwarmRPC<int>) {
         let orig_rpc = rpc.clone();
         let encoded = bincode::encode(&rpc).ok().unwrap();
-        println!("ENCODED: {}", encoded);
         let dec_rpc: IronSwarmRPC<int> =
             bincode::decode(encoded).ok().unwrap();
-        println!("DECODED: {}", dec_rpc);
         assert_eq!(orig_rpc, dec_rpc);
+    }
+
+    fn recv_msg_rpc_tester(network: &mut SwarmNetwork<int>,
+                           rpc: IronSwarmRPC<int>) -> IoResult<()> {
+        let mut socket = try!(UdpSocket::bind(local_socket_send()));
+        let orig_rpc = rpc.clone();
+        let encoded = bincode::encode(&rpc).ok().unwrap();
+        try!(socket.send_to(encoded.container_as_bytes(), local_socket_swarm()));
+
+        let dec_rpc = try!(network.recv_msg());
+        assert_eq!(orig_rpc, dec_rpc);
+        Ok(())
     }
 
     fn construct_artifact() -> SwarmArtifact<int> {
@@ -101,6 +126,18 @@ mod test {
         SwarmMsg::new_artifact_msg(construct_agent(), construct_artifact())
     }
 
+    fn local_socket_swarm() -> SocketAddr {
+        SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 54321 }
+    }
+
+    fn local_socket_send() -> SocketAddr {
+        SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 44444 }
+    }
+
+    fn construct_swarm_network_with_local_socket() -> SwarmNetwork<int> {
+        SwarmNetwork::new(27, local_socket_swarm())
+    }
+
     #[test]
     fn bincode_test() {
         let mut ack_vec = Vec::new();
@@ -111,5 +148,23 @@ mod test {
         bincode_rpc_tester(IronSwarmRPC::JOIN(construct_agent()));
         bincode_rpc_tester(IronSwarmRPC::INFO(10, construct_swarm_msg()));
         bincode_rpc_tester(IronSwarmRPC::BROADCAST(construct_swarm_msg()));
+    }
+
+    #[test]
+    fn recv_msg_test() {
+        let mut ack_vec = Vec::new();
+        ack_vec.push(construct_agent());
+        let mut network = construct_swarm_network_with_local_socket();
+
+        let res = recv_msg_rpc_tester(&mut network, IronSwarmRPC::HRTBT(construct_agent()));
+        assert!(res.is_ok());
+        let res = recv_msg_rpc_tester(&mut network, IronSwarmRPC::HRTBTACK(ack_vec));
+        assert!(res.is_ok());
+        let res = recv_msg_rpc_tester(&mut network, IronSwarmRPC::JOIN(construct_agent()));
+        assert!(res.is_ok());
+        let res = recv_msg_rpc_tester(&mut network, IronSwarmRPC::INFO(10, construct_swarm_msg()));
+        assert!(res.is_ok());
+        let res = recv_msg_rpc_tester(&mut network, IronSwarmRPC::BROADCAST(construct_swarm_msg()));
+        assert!(res.is_ok());
     }
 }

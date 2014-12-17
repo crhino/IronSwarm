@@ -170,23 +170,23 @@ mod tests {
         fn react(&mut self,
             msg: &SwarmMsg<int>) {
             match msg.event() {
-                &Artifact(art) => {
+                &Artifact(ref art) => {
                     assert_eq!(*art.location(), ART_LOC);
                     handle_io_result(self.react_writer.write_u8(ART_EVENT_RECV))
                 }
-                &ArtifactGone(art) => {
+                &ArtifactGone(ref art) => {
                     assert_eq!(*art.location(), ART_LOC);
                     handle_io_result(self.react_writer.write_u8(ART_GONE_EVENT_RECV))
                 }
-                &AvoidLocation(loc) => {
-                    assert_eq!(loc, AVD_LOC);
+                &AvoidLocation(ref loc) => {
+                    assert_eq!(*loc, AVD_LOC);
                     handle_io_result(self.react_writer.write_u8(AVOID_LOC_EVENT_RECV))
                 }
-                &Converge(loc) => {
-                    assert_eq!(loc, CNV_LOC);
+                &Converge(ref loc) => {
+                    assert_eq!(*loc, CNV_LOC);
                     handle_io_result(self.react_writer.write_u8(CONV_EVENT_RECV))
                 }
-                &MaliciousAgent(agn) => {
+                &MaliciousAgent(ref agn) => {
                     assert_eq!(*agn.location(), AGN_LOC);
                     handle_io_result(self.react_writer.write_u8(MAL_AGN_EVENT_RECV))
                 }
