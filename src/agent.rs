@@ -10,10 +10,26 @@ extern crate serialize;
 
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 use byteid::ByteId;
-use std::io::net::ip::{Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::vec::Vec;
+use std::io::IoResult;
+use std::io::net::ip::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddr};
 
 #[deriving(Clone, Eq, PartialEq, Show)]
 pub struct SwarmAddr(SocketAddr);
+
+impl<'a> ToSocketAddr for &'a SwarmAddr {
+    fn to_socket_addr(&self) -> IoResult<SocketAddr> {
+        let &&SwarmAddr(addr) = self;
+        Ok(addr)
+    }
+
+    fn to_socket_addr_all(&self) -> IoResult<Vec<SocketAddr>> {
+        let &&SwarmAddr(addr) = self;
+        let mut vec = Vec::new();
+        vec.push(addr);
+        Ok(vec)
+    }
+}
 
 #[deriving(Clone, Eq, PartialEq, Show, Decodable, Encodable)]
 pub struct SwarmAgent<L> {
