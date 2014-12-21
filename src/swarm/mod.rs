@@ -20,6 +20,7 @@ use artifact::{SwarmArtifact};
 use Location;
 use ReactToSwarm;
 
+mod socket;
 pub mod network;
 
 pub struct SwarmController<T, Loc> {
