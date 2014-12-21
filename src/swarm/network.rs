@@ -73,11 +73,35 @@ impl<'a,Loc:Decodable<DecoderReader<'a,BufReader<'a>>, IoError>> SwarmNetwork<Lo
 
 // Implement sending of IronSwarmRPC through the UDP socket.
 impl<'a,Loc:Encodable<EncoderWriter<'a,MemWriter>, IoError>+Clone> SwarmNetwork<Loc> {
-    fn send_heartbeat(&'a mut self, to_agn: SwarmAgent<Loc>) -> IoResult<()> {
-        let rpc = IronSwarmRPC::HRTBT(self.local_agent.clone());
+    fn send_rpc(&'a mut self, rpc: IronSwarmRPC<Loc>, to_agn: SwarmAgent<Loc>) -> IoResult<()> {
         let encoded = try!(encode(&rpc));
         try!(self.socket.send_to(encoded.as_slice(), to_agn.address()));
         Ok(())
+    }
+
+    fn send_heartbeat(&'a mut self, to_agn: SwarmAgent<Loc>) -> IoResult<()> {
+        let rpc = IronSwarmRPC::HRTBT(self.local_agent.clone());
+        self.send_rpc(rpc, to_agn)
+    }
+
+    fn send_heartbeat_ack(&'a mut self, to_agn: SwarmAgent<Loc>) -> IoResult<()> {
+        let rpc = IronSwarmRPC::HRTBTACK(self.neighbors.clone());
+        self.send_rpc(rpc, to_agn)
+    }
+
+    fn send_join(&'a mut self, to_agn: SwarmAgent<Loc>) -> IoResult<()> {
+        let rpc = IronSwarmRPC::JOIN(self.local_agent.clone());
+        self.send_rpc(rpc, to_agn)
+    }
+
+    fn send_info(&'a mut self, to_agn: SwarmAgent<Loc>, loc: Loc, msg: SwarmMsg<Loc>) -> IoResult<()> {
+        let rpc = IronSwarmRPC::INFO(loc, msg);
+        self.send_rpc(rpc, to_agn)
+    }
+
+    fn send_broadcast(&'a mut self, to_agn: SwarmAgent<Loc>, msg: SwarmMsg<Loc>) -> IoResult<()> {
+        let rpc = IronSwarmRPC::BROADCAST(msg);
+        self.send_rpc(rpc, to_agn)
     }
 }
 
@@ -124,6 +148,52 @@ mod test {
         let exp_rpc = IronSwarmRPC::HRTBT(from_network.local_agent.clone());
 
         try!(from_network.send_heartbeat(to_network.local_agent.clone()));
+        let recv_rpc = try!(to_network.recv_msg());
+
+        assert_eq!(exp_rpc, recv_rpc);
+        Ok(())
+    }
+
+    fn send_hrtbtack_tester(from_network: &mut SwarmNetwork<int>,
+                           to_network: &mut SwarmNetwork<int>) -> IoResult<()> {
+        let exp_rpc = IronSwarmRPC::HRTBTACK(from_network.neighbors.clone());
+
+        try!(from_network.send_heartbeat_ack(to_network.local_agent.clone()));
+        let recv_rpc = try!(to_network.recv_msg());
+
+        assert_eq!(exp_rpc, recv_rpc);
+        Ok(())
+    }
+
+    fn send_join_tester(from_network: &mut SwarmNetwork<int>,
+                           to_network: &mut SwarmNetwork<int>) -> IoResult<()> {
+        let exp_rpc = IronSwarmRPC::JOIN(from_network.local_agent.clone());
+
+        try!(from_network.send_join(to_network.local_agent.clone()));
+        let recv_rpc = try!(to_network.recv_msg());
+
+        assert_eq!(exp_rpc, recv_rpc);
+        Ok(())
+    }
+
+    fn send_info_tester(from_network: &mut SwarmNetwork<int>,
+                           to_network: &mut SwarmNetwork<int>) -> IoResult<()> {
+        let msg = construct_swarm_msg();
+        let exp_rpc = IronSwarmRPC::INFO(27, msg.clone());
+
+        try!(from_network.send_info(to_network.local_agent.clone(), 27, msg));
+        let recv_rpc = try!(to_network.recv_msg());
+
+        assert_eq!(exp_rpc, recv_rpc);
+        Ok(())
+    }
+
+    fn send_broadcast_tester(from_network: &mut SwarmNetwork<int>,
+                           to_network: &mut SwarmNetwork<int>) -> IoResult<()> {
+        let msg = construct_swarm_msg();
+        let exp_rpc = IronSwarmRPC::BROADCAST(msg.clone());
+
+        try!(from_network.send_broadcast(to_network.local_agent.clone(), msg));
         let recv_rpc = try!(to_network.recv_msg());
 
         assert_eq!(exp_rpc, recv_rpc);
@@ -188,6 +258,42 @@ mod test {
         let mut to_network = construct_swarm_network_with_local_socket();
 
         let res = send_hrtbt_tester(&mut from_network, &mut to_network);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn send_hrtbtack_test() {
+        let mut from_network = construct_swarm_network_with_local_socket();
+        let mut to_network = construct_swarm_network_with_local_socket();
+
+        let res = send_hrtbtack_tester(&mut from_network, &mut to_network);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn send_join_test() {
+        let mut from_network = construct_swarm_network_with_local_socket();
+        let mut to_network = construct_swarm_network_with_local_socket();
+
+        let res = send_join_tester(&mut from_network, &mut to_network);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn send_info_test() {
+        let mut from_network = construct_swarm_network_with_local_socket();
+        let mut to_network = construct_swarm_network_with_local_socket();
+
+        let res = send_info_tester(&mut from_network, &mut to_network);
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn send_broadcast_test() {
+        let mut from_network = construct_swarm_network_with_local_socket();
+        let mut to_network = construct_swarm_network_with_local_socket();
+
+        let res = send_broadcast_tester(&mut from_network, &mut to_network);
         assert!(res.is_ok());
     }
 }
