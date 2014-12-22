@@ -1,10 +1,10 @@
-### Iron Swarm
+## Iron Swarm
 
 A peer-to-peer, agent-based complex system framework.
 
 This framework takes in an actor that implements `ReactToSwarm` in order to react to `SwarmMsg`s. The user will also implement a type that implements `Location`, which corresponds with the agent's location. The location is updated by the actor over time. The `swarm` module contains the Swarm overlay network and is how the Swarm passes messages around.
 
-## RPC Mechanism
+### RPC Mechanism
 
 Currently, Iron Swarm uses an enum consisting of the available RPC types:
 
@@ -28,7 +28,7 @@ pub enum IronSwarmRPC<Loc> {
 
 `BROADCAST` is similar to `INFO` except, as the name suggests, every agent in the network will receive and  react to the message.
 
-## Uses
+### Uses
 
 Potential uses include:
 - Modeling animal/human interactions.
