@@ -4,11 +4,10 @@
 // discovered by Agents locally and knowledge of Artifacts is dispersed throughout
 // the Swarm using either the INFO or BROADCAST RPC, depending on the associated
 // importance of a particular Artifact.
-extern crate serialize;
 use Location;
 use byteid::ByteId;
 
-#[deriving(Clone, Eq, PartialEq, Show, Decodable, Encodable)]
+#[deriving(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
 pub struct SwarmArtifact<L> {
     id: ByteId,
     location: L

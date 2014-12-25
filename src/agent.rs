@@ -6,9 +6,7 @@
 // agents. The operations defined here are mostly abstract operations that should
 // be implemented by the user of the framework in accordance with their specific
 // use case.
-extern crate serialize;
-
-use serialize::{Encoder, Encodable, Decoder, Decodable};
+use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
 use byteid::ByteId;
 use std::vec::Vec;
 use std::io::IoResult;
@@ -31,7 +29,7 @@ impl<'a> ToSocketAddr for &'a SwarmAddr {
     }
 }
 
-#[deriving(Clone, Eq, PartialEq, Show, Decodable, Encodable)]
+#[deriving(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
 pub struct SwarmAgent<L> {
     swarm_id: ByteId,
     loc: L,

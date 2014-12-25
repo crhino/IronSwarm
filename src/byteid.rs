@@ -1,5 +1,4 @@
-extern crate serialize;
-use serialize::{Encoder, Encodable, Decoder, Decodable};
+use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
 use std::fmt;
 use std::rand::{task_rng, Rng};
 
@@ -49,10 +48,10 @@ impl<E, D:Decoder<E>> Decodable<D,E> for ByteId {
 
 impl BitAnd<ByteId, ByteId> for ByteId {
     #[inline]
-    fn bitand(&self, other: &ByteId) -> ByteId {
+    fn bitand(self, other: ByteId) -> ByteId {
         let mut ret = [0u8, ..BYTE_ID_LEN];
-        let &ByteId(ref me) = self;
-        let &ByteId(ref you) = other;
+        let ByteId(ref me) = self;
+        let ByteId(ref you) = other;
 
         for i in range(0u, BYTE_ID_LEN) {
             ret[i] = me[i] & you[i];
@@ -64,10 +63,10 @@ impl BitAnd<ByteId, ByteId> for ByteId {
 
 impl BitOr<ByteId, ByteId> for ByteId {
     #[inline]
-    fn bitor(&self, other: &ByteId) -> ByteId {
+    fn bitor(self, other: ByteId) -> ByteId {
         let mut ret = [0u8, ..BYTE_ID_LEN];
-        let &ByteId(ref me) = self;
-        let &ByteId(ref you) = other;
+        let ByteId(ref me) = self;
+        let ByteId(ref you) = other;
 
         for i in range(0u, BYTE_ID_LEN) {
             ret[i] = me[i] | you[i];
@@ -79,10 +78,10 @@ impl BitOr<ByteId, ByteId> for ByteId {
 
 impl BitXor<ByteId, ByteId> for ByteId {
     #[inline]
-    fn bitxor(&self, other: &ByteId) -> ByteId {
+    fn bitxor(self, other: ByteId) -> ByteId {
         let mut ret = [0u8, ..BYTE_ID_LEN];
-        let &ByteId(ref me) = self;
-        let &ByteId(ref you) = other;
+        let ByteId(ref me) = self;
+        let ByteId(ref you) = other;
 
         for i in range(0u, BYTE_ID_LEN) {
             ret[i] = me[i] ^ you[i];
@@ -94,9 +93,9 @@ impl BitXor<ByteId, ByteId> for ByteId {
 
 impl Not<ByteId> for ByteId {
     #[inline]
-    fn not(&self) -> ByteId {
+    fn not(self) -> ByteId {
         let mut ret = [0u8, ..BYTE_ID_LEN];
-        let &ByteId(ref me) = self;
+        let ByteId(ref me) = self;
 
         for i in range(0u, BYTE_ID_LEN) {
             ret[i] = !me[i];

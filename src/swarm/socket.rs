@@ -1,6 +1,4 @@
-extern crate serialize;
-
-use serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::io::net::ip::{SocketAddr, ToSocketAddr};
 use std::io::net::udp::UdpSocket;
 use std::io::MemWriter;
@@ -39,7 +37,7 @@ impl SwarmSocket {
 
 // Implement receiving of IronSwarmRPC through the UDP socket.
 impl<'a,Loc:Decodable<DecoderReader<'a,BufReader<'a>>, IoError>> SwarmSocket {
-    fn recv_msg(&'a mut self) -> IoResult<IronSwarmRPC<Loc>> {
+    pub fn recv_msg(&'a mut self) -> IoResult<IronSwarmRPC<Loc>> {
         match self.socket.recv_from(&mut self.recv_buf) {
             Ok((amt, _)) => {
                 let rpc = try!(decode_from(&mut BufReader::new(self.recv_buf.slice_to(amt))));
@@ -58,28 +56,28 @@ impl<'a,Loc:Encodable<EncoderWriter<'a,MemWriter>, IoError>+Clone,A: ToSocketAdd
         Ok(())
     }
 
-    fn send_heartbeat(&'a mut self, dest: A, hrtbt: SwarmAgent<Loc>) -> IoResult<()> {
+    pub fn send_heartbeat(&'a mut self, dest: A, hrtbt: SwarmAgent<Loc>) -> IoResult<()> {
         let rpc = IronSwarmRPC::HRTBT(hrtbt);
         self.send_rpc(rpc, dest)
     }
 
-    fn send_heartbeat_ack(&'a mut self, dest: A,
+    pub fn send_heartbeat_ack(&'a mut self, dest: A,
                          neighbors: Vec<SwarmAgent<Loc>>) -> IoResult<()> {
         let rpc = IronSwarmRPC::HRTBTACK(neighbors);
         self.send_rpc(rpc, dest)
     }
 
-    fn send_join(&'a mut self, dest: A, join_agn: SwarmAgent<Loc>) -> IoResult<()> {
+    pub fn send_join(&'a mut self, dest: A, join_agn: SwarmAgent<Loc>) -> IoResult<()> {
         let rpc = IronSwarmRPC::JOIN(join_agn);
         self.send_rpc(rpc, dest)
     }
 
-    fn send_info(&'a mut self, dest: A, loc: Loc, msg: SwarmMsg<Loc>) -> IoResult<()> {
+    pub fn send_info(&'a mut self, dest: A, loc: Loc, msg: SwarmMsg<Loc>) -> IoResult<()> {
         let rpc = IronSwarmRPC::INFO(loc, msg);
         self.send_rpc(rpc, dest)
     }
 
-    fn send_broadcast(&'a mut self, dest: A, msg: SwarmMsg<Loc>) -> IoResult<()> {
+    pub fn send_broadcast(&'a mut self, dest: A, msg: SwarmMsg<Loc>) -> IoResult<()> {
         let rpc = IronSwarmRPC::BROADCAST(msg);
         self.send_rpc(rpc, dest)
     }

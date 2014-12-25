@@ -1,14 +1,16 @@
-extern crate serialize;
-
-use serialize::{Decodable, Encodable};
+use rustc_serialize::{Decodable, Encodable};
 use std::vec::Vec;
 use swarm::socket::SwarmSocket;
 use swarm::SwarmMsg;
 use agent::SwarmAgent;
-use std::io::{IoResult};
+use Location;
 use std::io::net::ip::{SocketAddr, ToSocketAddr};
+use bincode::DecoderReader;
+use bincode::EncoderWriter;
+use std::io::{IoResult, IoError, BufReader};
+use std::io::MemWriter;
 
-#[deriving(Clone, Eq, PartialEq, Show, Decodable, Encodable)]
+#[deriving(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
 pub enum IronSwarmRPC<Loc> {
     HRTBT(SwarmAgent<Loc>),
     HRTBTACK(Vec<SwarmAgent<Loc>>),

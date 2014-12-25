@@ -13,8 +13,6 @@
 // - JOIN
 // - INFO
 // - BROADCAST
-extern crate serialize;
-
 use agent::{SwarmAgent};
 use artifact::{SwarmArtifact};
 use Location;
@@ -77,7 +75,7 @@ impl<T: ReactToSwarm<Loc>, Loc: Location> SwarmController<T, Loc>
 
 }
 
-#[deriving(Clone, Eq, PartialEq, Show, Decodable, Encodable)]
+#[deriving(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
 pub enum SwarmEvent<Loc> {
     Artifact(SwarmArtifact<Loc>),
     ArtifactGone(SwarmArtifact<Loc>),
@@ -86,7 +84,7 @@ pub enum SwarmEvent<Loc> {
     MaliciousAgent(SwarmAgent<Loc>)
 }
 
-#[deriving(Clone, Eq, PartialEq, Show, Decodable, Encodable)]
+#[deriving(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
 pub struct SwarmMsg<Loc> {
     from_agent: SwarmAgent<Loc>,
     event: SwarmEvent<Loc>

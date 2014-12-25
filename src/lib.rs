@@ -2,7 +2,7 @@
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![feature(globs)]
-extern crate serialize;
+extern crate "rustc-serialize" as rustc_serialize;
 extern crate bincode;
 
 use swarm::{SwarmMsg, SwarmController};
