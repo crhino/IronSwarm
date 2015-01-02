@@ -9,6 +9,7 @@ use bincode::EncoderWriter;
 use swarm::SwarmMsg;
 use agent::SwarmAgent;
 use swarm::network::IronSwarmRPC;
+use std::mem;
 
 pub struct SwarmSocket {
     recv_buf: [u8, ..1024],
@@ -36,11 +37,16 @@ impl SwarmSocket {
 }
 
 // Implement receiving of IronSwarmRPC through the UDP socket.
-impl<'a,Loc:Decodable<DecoderReader<'a,BufReader<'a>>, IoError>> SwarmSocket {
-    pub fn recv_msg(&'a mut self) -> IoResult<IronSwarmRPC<Loc>> {
+impl SwarmSocket {
+    pub fn recv_msg<'a, Loc>(&mut self) -> IoResult<IronSwarmRPC<Loc>>
+    where Loc: Decodable<DecoderReader<'a,BufReader<'a>>, IoError> {
         match self.socket.recv_from(&mut self.recv_buf) {
             Ok((amt, _)) => {
-                let rpc = try!(decode_from(&mut BufReader::new(self.recv_buf.slice_to(amt))));
+                //XXX: transmuting the buffer in order to get appropriate lifetime.
+                let transmuted_buf = unsafe {
+                    mem::transmute(self.recv_buf.slice_to(amt))
+                };
+                let rpc = try!(decode_from(&mut BufReader::new(transmuted_buf)));
                 Ok(rpc)
             }
             Err(e) => panic!("Could not recv a packet: {}", e)
@@ -50,34 +56,34 @@ impl<'a,Loc:Decodable<DecoderReader<'a,BufReader<'a>>, IoError>> SwarmSocket {
 
 // Implement sending of IronSwarmRPC through the UDP socket.
 impl<'a,Loc:Encodable<EncoderWriter<'a,MemWriter>, IoError>+Clone,A: ToSocketAddr> SwarmSocket {
-    fn send_rpc(&'a mut self, rpc: IronSwarmRPC<Loc>, dest: A) -> IoResult<()> {
+    fn send_rpc(&mut self, rpc: IronSwarmRPC<Loc>, dest: A) -> IoResult<()> {
         let encoded = try!(encode(&rpc));
         try!(self.socket.send_to(encoded.as_slice(), dest));
         Ok(())
     }
 
-    pub fn send_heartbeat(&'a mut self, dest: A, hrtbt: SwarmAgent<Loc>) -> IoResult<()> {
+    pub fn send_heartbeat(&mut self, dest: A, hrtbt: SwarmAgent<Loc>) -> IoResult<()> {
         let rpc = IronSwarmRPC::HRTBT(hrtbt);
         self.send_rpc(rpc, dest)
     }
 
-    pub fn send_heartbeat_ack(&'a mut self, dest: A,
+    pub fn send_heartbeat_ack(&mut self, dest: A,
                          neighbors: Vec<SwarmAgent<Loc>>) -> IoResult<()> {
         let rpc = IronSwarmRPC::HRTBTACK(neighbors);
         self.send_rpc(rpc, dest)
     }
 
-    pub fn send_join(&'a mut self, dest: A, join_agn: SwarmAgent<Loc>) -> IoResult<()> {
+    pub fn send_join(&mut self, dest: A, join_agn: SwarmAgent<Loc>) -> IoResult<()> {
         let rpc = IronSwarmRPC::JOIN(join_agn);
         self.send_rpc(rpc, dest)
     }
 
-    pub fn send_info(&'a mut self, dest: A, loc: Loc, msg: SwarmMsg<Loc>) -> IoResult<()> {
+    pub fn send_info(&mut self, dest: A, loc: Loc, msg: SwarmMsg<Loc>) -> IoResult<()> {
         let rpc = IronSwarmRPC::INFO(loc, msg);
         self.send_rpc(rpc, dest)
     }
 
-    pub fn send_broadcast(&'a mut self, dest: A, msg: SwarmMsg<Loc>) -> IoResult<()> {
+    pub fn send_broadcast(&mut self, dest: A, msg: SwarmMsg<Loc>) -> IoResult<()> {
         let rpc = IronSwarmRPC::BROADCAST(msg);
         self.send_rpc(rpc, dest)
     }
