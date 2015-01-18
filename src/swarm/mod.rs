@@ -156,18 +156,18 @@ mod test {
     const CONV_EVENT_RECV: u8 = 1 << 3;
     const MAL_AGN_EVENT_RECV: u8 = 1 << 4;
 
-    const ART_LOC: int = 1 << 0;
-    const AGN_LOC: int = 1 << 1;
-    const AVD_LOC: int = 1 << 2;
-    const CNV_LOC: int = 1 << 3;
+    const ART_LOC: isize = 1 << 0;
+    const AGN_LOC: isize = 1 << 1;
+    const AVD_LOC: isize = 1 << 2;
+    const CNV_LOC: isize = 1 << 3;
 
     struct Tester {
         react_writer: PipeStream
     }
 
-    impl ReactToSwarm<int> for Tester {
+    impl ReactToSwarm<isize> for Tester {
         fn react(&mut self,
-            msg: &SwarmMsg<int>) {
+            msg: &SwarmMsg<isize>) {
             match msg.event() {
                 &Artifact(ref art) => {
                     assert_eq!(*art.location(), ART_LOC);
@@ -206,7 +206,7 @@ mod test {
         SocketAddr{ ip: Ipv4Addr(127,0,0,0), port: 55555 }
     }
 
-    fn swarm_tester() -> (SwarmController<Tester,int>, PipeStream)
+    fn swarm_tester() -> (SwarmController<Tester,isize>, PipeStream)
     {
         let pair = handle_io_result(PipeStream::pair());
         let tester = Tester { react_writer: pair.writer };

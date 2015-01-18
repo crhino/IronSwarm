@@ -21,7 +21,7 @@ pub trait ReactToSwarm<Loc: Location> {
 }
 
 pub trait Location {
-    fn distance(&self, other: &Self) -> uint;
+    fn distance(&self, other: &Self) -> usize;
 }
 
 pub struct Swarm<T, Loc> {

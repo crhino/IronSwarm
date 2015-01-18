@@ -3,7 +3,7 @@ use std::fmt;
 use std::rand::{thread_rng, Rng};
 use std::ops::{BitAnd, BitOr, BitXor, Not};
 
-const BYTE_ID_LEN: uint = 20;
+const BYTE_ID_LEN: usize = 20;
 
 #[derive(Clone, Eq, PartialEq, Show)]
 pub struct ByteId([u8; BYTE_ID_LEN]);
@@ -15,12 +15,12 @@ impl ByteId {
         ByteId(data)
     }
 
-    pub fn set_byte(&mut self, index: uint, val: u8) {
+    pub fn set_byte(&mut self, index: usize, val: u8) {
         let &mut ByteId(ref mut data) = self;
         data[index % BYTE_ID_LEN] = val;
     }
 
-    pub fn byte(&self, index: uint) -> u8 {
+    pub fn byte(&self, index: usize) -> u8 {
         let &ByteId(ref data) = self;
         data[index % BYTE_ID_LEN]
     }
@@ -39,7 +39,7 @@ impl Encodable for ByteId {
 impl Decodable for ByteId {
     fn decode<D:Decoder>(d: &mut D) -> Result<ByteId,D::Error> {
         let mut data = [0u8; BYTE_ID_LEN];
-        for i in range(0u, BYTE_ID_LEN) {
+        for i in range(0us, BYTE_ID_LEN) {
             data[i] = try!(d.read_u8());
         }
 
@@ -56,7 +56,7 @@ impl BitAnd<ByteId> for ByteId {
         let ByteId(ref me) = self;
         let ByteId(ref you) = other;
 
-        for i in range(0u, BYTE_ID_LEN) {
+        for i in range(0us, BYTE_ID_LEN) {
             ret[i] = me[i] & you[i];
         }
 
@@ -73,7 +73,7 @@ impl BitOr<ByteId> for ByteId {
         let ByteId(ref me) = self;
         let ByteId(ref you) = other;
 
-        for i in range(0u, BYTE_ID_LEN) {
+        for i in range(0us, BYTE_ID_LEN) {
             ret[i] = me[i] | you[i];
         }
 
@@ -90,7 +90,7 @@ impl BitXor<ByteId> for ByteId {
         let ByteId(ref me) = self;
         let ByteId(ref you) = other;
 
-        for i in range(0u, BYTE_ID_LEN) {
+        for i in range(0us, BYTE_ID_LEN) {
             ret[i] = me[i] ^ you[i];
         }
 
@@ -106,7 +106,7 @@ impl Not for ByteId {
         let mut ret = [0u8; BYTE_ID_LEN];
         let ByteId(ref me) = self;
 
-        for i in range(0u, BYTE_ID_LEN) {
+        for i in range(0us, BYTE_ID_LEN) {
             ret[i] = !me[i];
         }
 

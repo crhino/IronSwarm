@@ -101,9 +101,9 @@ mod test {
     use std::io::net::ip::{SocketAddr, Ipv4Addr};
     use std::num::SignedInt;
 
-    impl Location for int {
-        fn distance(&self, other: &int) -> uint {
-            (*self - *other).abs() as uint
+    impl Location for isize {
+        fn distance(&self, other: &isize) -> usize {
+            (*self - *other).abs() as usize
         }
     }
 
@@ -112,7 +112,7 @@ mod test {
         let ipaddr = Ipv4Addr(127, 0, 0, 0);
         let p = 1234;
         let addr = SocketAddr{ ip: ipaddr, port: p };
-        let loc = 9i;
+        let loc = 9is;
 
         let agent = SwarmAgent::new(loc, addr);
     }
@@ -122,7 +122,7 @@ mod test {
         let ipaddr = Ipv4Addr(127, 0, 0, 0);
         let p = 1234;
         let addr = SocketAddr{ ip: ipaddr, port: p };
-        let loc = 9i;
+        let loc = 9is;
 
         let agent = SwarmAgent::new(loc, addr);
         assert_eq!(agent.location(), &loc);
@@ -133,8 +133,8 @@ mod test {
         let ipaddr = Ipv4Addr(127, 0, 0, 0);
         let p = 1234;
         let addr = SocketAddr{ ip: ipaddr, port: p };
-        let loc = 9i;
-        let upd_loc = -9i;
+        let loc = 9is;
+        let upd_loc = -9is;
 
         let mut agent = SwarmAgent::new(loc, addr);
         agent.update_location(upd_loc);
@@ -146,7 +146,7 @@ mod test {
         let ipaddr = Ipv4Addr(127, 0, 0, 0);
         let p = 1234;
         let addr = SocketAddr{ ip: ipaddr, port: p };
-        let loc = 9i;
+        let loc = 9is;
 
         let agent = SwarmAgent::new(loc, addr);
         assert_eq!(agent.id(), &agent.swarm_id);
@@ -157,7 +157,7 @@ mod test {
         let ipaddr = Ipv4Addr(127, 0, 0, 0);
         let p = 1234;
         let addr = SocketAddr{ ip: ipaddr, port: p };
-        let loc = 9i;
+        let loc = 9is;
 
         let agent = SwarmAgent::new(loc, addr);
         assert_eq!(*agent.address(), agent.addr);
@@ -168,12 +168,12 @@ mod test {
         let ipaddr = Ipv4Addr(127, 0, 0, 0);
         let p = 1234;
         let addr = SocketAddr{ ip: ipaddr, port: p };
-        let loc = 9i;
+        let loc = 9is;
 
         let agent = SwarmAgent::new(loc, addr);
         let limit = bincode::SizeLimit::Infinite;
         let encoded = bincode::encode(&agent, limit).ok().unwrap();
-        let dec_agnt: SwarmAgent<int> =
+        let dec_agnt: SwarmAgent<isize> =
             bincode::decode(encoded.as_slice()).ok().unwrap();
 
         assert_eq!(agent.address(), dec_agnt.address());

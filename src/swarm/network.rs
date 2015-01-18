@@ -145,17 +145,17 @@ mod test {
     use super::SwarmNetwork;
     use bincode::{decode, encode};
 
-    fn construct_artifact() -> SwarmArtifact<int> {
-        let loc = 9i;
+    fn construct_artifact() -> SwarmArtifact<isize> {
+        let loc = 9is;
 
         SwarmArtifact::new(loc)
     }
 
-    fn construct_agent() -> SwarmAgent<int> {
+    fn construct_agent() -> SwarmAgent<isize> {
         SwarmAgent::new(9, local_socket())
     }
 
-    fn construct_swarm_msg() -> SwarmMsg<int> {
+    fn construct_swarm_msg() -> SwarmMsg<isize> {
         SwarmMsg::new_artifact_msg(construct_agent(), construct_artifact())
     }
 
@@ -163,17 +163,17 @@ mod test {
         SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: next_test_port() }
     }
 
-    fn bincode_rpc_tester(rpc: IronSwarmRPC<int>) {
+    fn bincode_rpc_tester(rpc: IronSwarmRPC<isize>) {
         let orig_rpc = rpc.clone();
         let limit = bincode::SizeLimit::Infinite;
         let encoded = bincode::encode(&rpc, limit).ok().unwrap();
-        let dec_rpc: IronSwarmRPC<int> =
+        let dec_rpc: IronSwarmRPC<isize> =
             bincode::decode(encoded.as_slice()).ok().unwrap();
         assert_eq!(orig_rpc, dec_rpc);
     }
 
-    fn send_broadcast_tester(from_nework: &mut SwarmNetwork<int>,
-                           to_network: &mut SwarmNetwork<int>) -> SwarmResult<()> {
+    fn send_broadcast_tester(from_nework: &mut SwarmNetwork<isize>,
+                           to_network: &mut SwarmNetwork<isize>) -> SwarmResult<()> {
         let msg = construct_swarm_msg();
         let exp_rpc = IronSwarmRPC::BROADCAST(msg.clone());
 
@@ -184,9 +184,9 @@ mod test {
         Ok(())
     }
 
-    fn next_msg_rpc_tester(from_network: &mut SwarmNetwork<int>,
-                           to_network: &mut SwarmNetwork<int>,
-                           rpc: IronSwarmRPC<int>) -> SwarmResult<()> {
+    fn next_msg_rpc_tester(from_network: &mut SwarmNetwork<isize>,
+                           to_network: &mut SwarmNetwork<isize>,
+                           rpc: IronSwarmRPC<isize>) -> SwarmResult<()> {
         let orig_rpc = rpc.clone();
         let net_sock = to_network.address();
         try!(from_network.socket.send_packet(rpc, net_sock));
@@ -200,8 +200,8 @@ mod test {
     fn next_msg_test() {
         let mut ack_vec = Vec::new();
         ack_vec.push(construct_agent());
-        let mut from_network = SwarmNetwork::new(0i, local_socket());
-        let mut to_network = SwarmNetwork::new(1i, local_socket());
+        let mut from_network = SwarmNetwork::new(0is, local_socket());
+        let mut to_network = SwarmNetwork::new(1is, local_socket());
 
         let res = next_msg_rpc_tester(&mut from_network, &mut to_network,
                                       IronSwarmRPC::HRTBT(construct_agent()));
@@ -234,8 +234,8 @@ mod test {
 
     #[test]
     fn send_rpc_test() {
-        let mut network_to = SwarmNetwork::new(0i, local_socket());
-        let mut network_from = SwarmNetwork::new(10i, local_socket());
+        let mut network_to = SwarmNetwork::new(0is, local_socket());
+        let mut network_from = SwarmNetwork::new(10is, local_socket());
 
         let res = send_broadcast_tester(&mut network_from, &mut network_to);
         assert!(res.is_ok());
@@ -243,9 +243,9 @@ mod test {
 
     #[test]
     fn join_self_closest_test() {
-        let mut network1 = SwarmNetwork::new(0i, local_socket());
-        let mut network2 = SwarmNetwork::new(10i, local_socket());
-        let mut joining = SwarmNetwork::new(2i, local_socket());
+        let mut network1 = SwarmNetwork::new(0is, local_socket());
+        let mut network2 = SwarmNetwork::new(10is, local_socket());
+        let mut joining = SwarmNetwork::new(2is, local_socket());
         network1.neighbors.push(network2.local_agent.clone());
 
         joining.join(network1.address());
@@ -256,9 +256,9 @@ mod test {
 
     #[test]
     fn join_other_closest_test() {
-        let mut network1 = SwarmNetwork::new(0i, local_socket());
-        let mut network2 = SwarmNetwork::new(10i, local_socket());
-        let mut joining = SwarmNetwork::new(9i, local_socket());
+        let mut network1 = SwarmNetwork::new(0is, local_socket());
+        let mut network2 = SwarmNetwork::new(10is, local_socket());
+        let mut joining = SwarmNetwork::new(9is, local_socket());
         network1.neighbors.push(network2.local_agent.clone());
 
         joining.join(network1.address());

@@ -42,12 +42,12 @@ mod test {
 
     #[test]
     fn bincode_test() {
-        let loc = 9i;
+        let loc = 9is;
 
         let art = SwarmArtifact::new(loc);
         let limit = bincode::SizeLimit::Infinite;
         let encoded = bincode::encode(&art, limit).ok().unwrap();
-        let dec_art: SwarmArtifact<int> =
+        let dec_art: SwarmArtifact<isize> =
             bincode::decode(encoded.as_slice()).ok().unwrap();
 
         assert_eq!(art.location(), dec_art.location());
