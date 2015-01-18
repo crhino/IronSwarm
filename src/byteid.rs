@@ -1,21 +1,22 @@
 use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
 use std::fmt;
-use std::rand::{task_rng, Rng};
+use std::rand::{thread_rng, Rng};
+use std::ops::{BitAnd, BitOr, BitXor, Not};
 
 const BYTE_ID_LEN: uint = 20;
 
-#[deriving(Clone, Eq, PartialEq, Show)]
-pub struct ByteId([u8, ..BYTE_ID_LEN]);
+#[derive(Clone, Eq, PartialEq, Show)]
+pub struct ByteId([u8; BYTE_ID_LEN]);
 
 impl ByteId {
     pub fn random_id() -> ByteId {
-        let mut data = [0u8, ..BYTE_ID_LEN];
-        task_rng().fill_bytes(&mut data);
+        let mut data = [0u8; BYTE_ID_LEN];
+        thread_rng().fill_bytes(&mut data);
         ByteId(data)
     }
 
     pub fn set_byte(&mut self, index: uint, val: u8) {
-        let &ByteId(ref mut data) = self;
+        let &mut ByteId(ref mut data) = self;
         data[index % BYTE_ID_LEN] = val;
     }
 
@@ -25,8 +26,8 @@ impl ByteId {
     }
 }
 
-impl<E, S:Encoder<E>> Encodable<S,E> for ByteId {
-    fn encode(&self, s: &mut S) -> Result<(),E> {
+impl Encodable for ByteId {
+    fn encode<S:Encoder>(&self, s: &mut S) -> Result<(),S::Error> {
         let &ByteId(ref data) = self;
         for &n in data.iter() {
             try!(s.emit_u8(n))
@@ -35,9 +36,9 @@ impl<E, S:Encoder<E>> Encodable<S,E> for ByteId {
     }
 }
 
-impl<E, D:Decoder<E>> Decodable<D,E> for ByteId {
-    fn decode(d: &mut D) -> Result<ByteId,E> {
-        let mut data = [0u8, ..BYTE_ID_LEN];
+impl Decodable for ByteId {
+    fn decode<D:Decoder>(d: &mut D) -> Result<ByteId,D::Error> {
+        let mut data = [0u8; BYTE_ID_LEN];
         for i in range(0u, BYTE_ID_LEN) {
             data[i] = try!(d.read_u8());
         }
@@ -46,10 +47,12 @@ impl<E, D:Decoder<E>> Decodable<D,E> for ByteId {
     }
 }
 
-impl BitAnd<ByteId, ByteId> for ByteId {
+impl BitAnd<ByteId> for ByteId {
+    type Output = ByteId;
+
     #[inline]
     fn bitand(self, other: ByteId) -> ByteId {
-        let mut ret = [0u8, ..BYTE_ID_LEN];
+        let mut ret = [0u8; BYTE_ID_LEN];
         let ByteId(ref me) = self;
         let ByteId(ref you) = other;
 
@@ -61,10 +64,12 @@ impl BitAnd<ByteId, ByteId> for ByteId {
     }
 }
 
-impl BitOr<ByteId, ByteId> for ByteId {
+impl BitOr<ByteId> for ByteId {
+    type Output = ByteId;
+
     #[inline]
     fn bitor(self, other: ByteId) -> ByteId {
-        let mut ret = [0u8, ..BYTE_ID_LEN];
+        let mut ret = [0u8; BYTE_ID_LEN];
         let ByteId(ref me) = self;
         let ByteId(ref you) = other;
 
@@ -76,10 +81,12 @@ impl BitOr<ByteId, ByteId> for ByteId {
     }
 }
 
-impl BitXor<ByteId, ByteId> for ByteId {
+impl BitXor<ByteId> for ByteId {
+    type Output = ByteId;
+
     #[inline]
     fn bitxor(self, other: ByteId) -> ByteId {
-        let mut ret = [0u8, ..BYTE_ID_LEN];
+        let mut ret = [0u8; BYTE_ID_LEN];
         let ByteId(ref me) = self;
         let ByteId(ref you) = other;
 
@@ -91,10 +98,12 @@ impl BitXor<ByteId, ByteId> for ByteId {
     }
 }
 
-impl Not<ByteId> for ByteId {
+impl Not for ByteId {
+    type Output = ByteId;
+
     #[inline]
     fn not(self) -> ByteId {
-        let mut ret = [0u8, ..BYTE_ID_LEN];
+        let mut ret = [0u8; BYTE_ID_LEN];
         let ByteId(ref me) = self;
 
         for i in range(0u, BYTE_ID_LEN) {
@@ -106,13 +115,13 @@ impl Not<ByteId> for ByteId {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::{ByteId, BYTE_ID_LEN};
 
     #[test]
     fn byte_test() {
-        let a = [0u8, ..BYTE_ID_LEN];
-        let mut b = [0u8, ..BYTE_ID_LEN];
+        let a = [0u8; BYTE_ID_LEN];
+        let mut b = [0u8; BYTE_ID_LEN];
         b[BYTE_ID_LEN/2] = 9;
         let id_a = ByteId(a);
         let id_b = ByteId(b);
@@ -124,7 +133,7 @@ mod tests {
 
     #[test]
     fn set_byte_test() {
-        let a = [0u8, ..BYTE_ID_LEN];
+        let a = [0u8; BYTE_ID_LEN];
         let mut id_a = ByteId(a);
 
         id_a.set_byte(0, 9);
@@ -136,7 +145,7 @@ mod tests {
 
     #[test]
     fn bitand_test() {
-        let data = [0u8, ..BYTE_ID_LEN];
+        let data = [0u8; BYTE_ID_LEN];
         let mut id_a = ByteId(data.clone());
         let mut id_b = ByteId(data);
 
@@ -149,7 +158,7 @@ mod tests {
 
     #[test]
     fn bitor_test() {
-        let data = [0u8, ..BYTE_ID_LEN];
+        let data = [0u8; BYTE_ID_LEN];
         let mut id_a = ByteId(data.clone());
         let mut id_b = ByteId(data);
 
@@ -162,7 +171,7 @@ mod tests {
 
     #[test]
     fn bitxor_test() {
-        let data = [0u8, ..BYTE_ID_LEN];
+        let data = [0u8; BYTE_ID_LEN];
         let mut id_a = ByteId(data.clone());
         let mut id_b = ByteId(data);
 
@@ -175,7 +184,7 @@ mod tests {
 
     #[test]
     fn not_test() {
-        let data = [0u8, ..BYTE_ID_LEN];
+        let data = [0u8; BYTE_ID_LEN];
         let mut id_b = ByteId(data);
 
         id_b.set_byte(3, 0b0000_1111);
@@ -196,6 +205,6 @@ mod tests {
 
     #[test]
     fn show_test() {
-        println!("{}", ByteId::random_id());
+        println!("{:?}", ByteId::random_id());
     }
 }

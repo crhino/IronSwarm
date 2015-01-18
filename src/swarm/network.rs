@@ -1,16 +1,16 @@
 use rustc_serialize::{Decodable, Encodable};
 use std::vec::Vec;
-use swarm::socket::SwarmSocket;
+use swarm::socket::{SwarmResult, SwarmSocket};
 use swarm::SwarmMsg;
 use agent::SwarmAgent;
 use Location;
 use std::io::net::ip::{SocketAddr, ToSocketAddr};
 use bincode::DecoderReader;
 use bincode::EncoderWriter;
-use std::io::{IoResult, IoError, BufReader};
+use std::io::{BufReader};
 use std::io::MemWriter;
 
-#[deriving(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
 pub enum IronSwarmRPC<Loc> {
     HRTBT(SwarmAgent<Loc>),
     HRTBTACK(Vec<SwarmAgent<Loc>>),
@@ -48,29 +48,29 @@ impl<Loc> SwarmNetwork<Loc> {
 }
 
 // Send RPC's.
-impl<'a, Loc: Encodable<EncoderWriter<'a,MemWriter>, IoError> + Clone> SwarmNetwork<Loc> {
-    fn send_heartbeat<A: ToSocketAddr>(&mut self, hrtbt: SwarmAgent<Loc>, dest: A) -> IoResult<()> {
+impl<Loc: Encodable + Clone> SwarmNetwork<Loc> {
+    fn send_heartbeat<A: ToSocketAddr>(&mut self, hrtbt: SwarmAgent<Loc>, dest: A) -> SwarmResult<()> {
         let rpc = IronSwarmRPC::HRTBT(hrtbt);
         self.socket.send_packet(rpc, dest)
     }
 
     fn send_heartbeat_ack<A: ToSocketAddr>(&mut self, neighbors: Vec<SwarmAgent<Loc>>,
-                                         dest: A) -> IoResult<()> {
+                                         dest: A) -> SwarmResult<()> {
         let rpc = IronSwarmRPC::HRTBTACK(neighbors);
         self.socket.send_packet(rpc, dest)
     }
 
-    fn send_info<A: ToSocketAddr>(&mut self, loc: Loc, msg: SwarmMsg<Loc>, dest: A) -> IoResult<()> {
+    fn send_info<A: ToSocketAddr>(&mut self, loc: Loc, msg: SwarmMsg<Loc>, dest: A) -> SwarmResult<()> {
         let rpc = IronSwarmRPC::INFO(loc, msg);
         self.socket.send_packet(rpc, dest)
     }
 
-    fn send_broadcast<A: ToSocketAddr>(&mut self, msg: SwarmMsg<Loc>, dest: A) -> IoResult<()> {
+    fn send_broadcast<A: ToSocketAddr>(&mut self, msg: SwarmMsg<Loc>, dest: A) -> SwarmResult<()> {
         let rpc = IronSwarmRPC::BROADCAST(msg);
         self.socket.send_packet(rpc, dest)
     }
 
-    fn send_join<A: ToSocketAddr>(&mut self, agn: SwarmAgent<Loc>, dest: A) -> IoResult<()> {
+    fn send_join<A: ToSocketAddr>(&mut self, agn: SwarmAgent<Loc>, dest: A) -> SwarmResult<()> {
         let rpc = IronSwarmRPC::JOIN(agn);
         self.socket.send_packet(rpc, dest)
     }
@@ -83,11 +83,8 @@ impl<'a, Loc: Encodable<EncoderWriter<'a,MemWriter>, IoError> + Clone> SwarmNetw
 
 
 // React to received RPC's.
-impl<'e,'d,Loc:Location +
-Encodable<EncoderWriter<'e,MemWriter>, IoError> +
-Decodable<DecoderReader<'d,BufReader<'d>>,IoError> +
-Clone> SwarmNetwork<Loc> {
-    fn next_msg(&mut self) -> IoResult<IronSwarmRPC<Loc>> {
+impl<Loc: Location + Encodable + Decodable + Clone> SwarmNetwork<Loc> {
+    fn next_msg(&mut self) -> SwarmResult<IronSwarmRPC<Loc>> {
         self.socket.recv_msg()
     }
 
@@ -95,7 +92,7 @@ Clone> SwarmNetwork<Loc> {
         let res = self.next_msg();
         let rpc = match res {
             Ok(r) => r,
-            Err(e) => panic!("Could not get next_msg: {}", e)
+            Err(e) => panic!("Could not get next_msg: {:?}", e)
         };
 
         match rpc {
@@ -137,11 +134,11 @@ Clone> SwarmNetwork<Loc> {
 #[cfg(test)]
 mod test {
     extern crate bincode;
-    use std::io::IoResult;
     use std::io::net::ip::{SocketAddr, Ipv4Addr};
     use std::io::test::next_test_port;
     use agent::{SwarmAgent};
     use artifact::SwarmArtifact;
+    use swarm::socket::SwarmResult;
     use swarm::SwarmMsg;
     use Location;
     use swarm::network::IronSwarmRPC;
@@ -168,14 +165,15 @@ mod test {
 
     fn bincode_rpc_tester(rpc: IronSwarmRPC<int>) {
         let orig_rpc = rpc.clone();
-        let encoded = bincode::encode(&rpc).ok().unwrap();
+        let limit = bincode::SizeLimit::Infinite;
+        let encoded = bincode::encode(&rpc, limit).ok().unwrap();
         let dec_rpc: IronSwarmRPC<int> =
-            bincode::decode(encoded).ok().unwrap();
+            bincode::decode(encoded.as_slice()).ok().unwrap();
         assert_eq!(orig_rpc, dec_rpc);
     }
 
     fn send_broadcast_tester(from_nework: &mut SwarmNetwork<int>,
-                           to_network: &mut SwarmNetwork<int>) -> IoResult<()> {
+                           to_network: &mut SwarmNetwork<int>) -> SwarmResult<()> {
         let msg = construct_swarm_msg();
         let exp_rpc = IronSwarmRPC::BROADCAST(msg.clone());
 
@@ -188,7 +186,7 @@ mod test {
 
     fn next_msg_rpc_tester(from_network: &mut SwarmNetwork<int>,
                            to_network: &mut SwarmNetwork<int>,
-                           rpc: IronSwarmRPC<int>) -> IoResult<()> {
+                           rpc: IronSwarmRPC<int>) -> SwarmResult<()> {
         let orig_rpc = rpc.clone();
         let net_sock = to_network.address();
         try!(from_network.socket.send_packet(rpc, net_sock));

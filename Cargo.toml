@@ -9,4 +9,4 @@ authors = ["crhino <piraino.chris@gmail.com>"]
 git = "https://github.com/crhino/bincode"
 
 [dependencies]
-rustc-serialize = "0.1.4"
+rustc-serialize = "0.2"

@@ -7,7 +7,7 @@
 use Location;
 use byteid::ByteId;
 
-#[deriving(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
 pub struct SwarmArtifact<L> {
     id: ByteId,
     location: L
@@ -45,9 +45,10 @@ mod test {
         let loc = 9i;
 
         let art = SwarmArtifact::new(loc);
-        let encoded = bincode::encode(&art).ok().unwrap();
+        let limit = bincode::SizeLimit::Infinite;
+        let encoded = bincode::encode(&art, limit).ok().unwrap();
         let dec_art: SwarmArtifact<int> =
-            bincode::decode(encoded).ok().unwrap();
+            bincode::decode(encoded.as_slice()).ok().unwrap();
 
         assert_eq!(art.location(), dec_art.location());
         assert_eq!(art.id(), dec_art.id());

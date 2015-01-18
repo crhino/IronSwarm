@@ -4,14 +4,15 @@ use std::io::net::udp::UdpSocket;
 use std::io::IoErrorKind;
 use std::io::MemWriter;
 use std::io::{IoResult, IoError, BufReader};
-use bincode::{decode_from, encode};
+use bincode::{self, decode_from, encode, DecodingError, EncodingError};
 use bincode::DecoderReader;
 use bincode::EncoderWriter;
 use std::mem;
+use std::error::FromError;
 
-const MAX_PACKET_SIZE: uint = 1024;
+pub const MAX_PACKET_SIZE: usize = 1024;
 
-#[deriving(RustcDecodable, RustcEncodable, Show)]
+#[derive(RustcDecodable, RustcEncodable, Show)]
 struct Packet<B> {
     body: B
 }
@@ -23,8 +24,46 @@ impl<B> Packet<B> {
 }
 
 pub struct SwarmSocket {
-    recv_buf: [u8, ..MAX_PACKET_SIZE],
+    recv_buf: [u8; MAX_PACKET_SIZE],
     socket: UdpSocket
+}
+
+pub type SwarmResult<R> = Result<R, SwarmError>;
+
+fn io_to_swarm_result<R>(res: IoResult<R>) -> SwarmResult<R> {
+    match res {
+        Ok(r) => Ok(r),
+        Err(err) => Err(SwarmError::IoError(err))
+    }
+}
+
+#[derive(Show)]
+pub enum SwarmError {
+    IoError(IoError),
+}
+
+impl FromError<DecodingError> for SwarmError {
+    fn from_error(err: DecodingError) -> SwarmError {
+        match err {
+            DecodingError::IoError(err) => SwarmError::IoError(err),
+            _ => panic!("{:?}", err)
+        }
+    }
+}
+
+impl FromError<EncodingError> for SwarmError {
+    fn from_error(err: EncodingError) -> SwarmError {
+        match err {
+            EncodingError::IoError(err) => SwarmError::IoError(err),
+            _ => panic!("{:?}", err)
+        }
+    }
+}
+
+impl FromError<IoError> for SwarmError {
+    fn from_error(err: IoError) -> SwarmError {
+        SwarmError::IoError(err)
+    }
 }
 
 impl SwarmSocket {
@@ -34,7 +73,7 @@ impl SwarmSocket {
             Err(e) => panic!("Could not bind socket: {}", e)
         };
         SwarmSocket {
-            recv_buf: [0u8, ..MAX_PACKET_SIZE],
+            recv_buf: [0u8; MAX_PACKET_SIZE],
             socket: socket,
         }
     }
@@ -49,38 +88,41 @@ impl SwarmSocket {
 
 // Implement receiving of packets through the UDP socket.
 impl SwarmSocket {
-    pub fn recv_msg<'a, B>(&mut self) -> IoResult<B>
-    where B: Decodable<DecoderReader<'a,BufReader<'a>>, IoError> {
+    pub fn recv_msg<'a, B>(&mut self) -> SwarmResult<B>
+    where B: Decodable {
         match self.socket.recv_from(&mut self.recv_buf) {
             Ok((amt, _)) => {
                 //XXX: transmuting the buffer in order to get appropriate lifetime.
                 let transmuted_buf = unsafe {
                     mem::transmute(self.recv_buf.slice_to(amt))
                 };
-                let pkt: Packet<B> = try!(decode_from(&mut BufReader::new(transmuted_buf)));
+                let limit = bincode::SizeLimit::UpperBound(MAX_PACKET_SIZE as u64);
+                let pkt: Packet<B> = try!(decode_from(
+                        &mut BufReader::new(transmuted_buf),
+                        limit));
                 Ok(pkt.inner())
             }
-            Err(e) => Err(e)
+            Err(e) => Err(SwarmError::IoError(e))
         }
     }
 }
 
 // Implement sending of IronSwarmRPC through the UDP socket.
-impl<'a, B:Encodable<EncoderWriter<'a,MemWriter>, IoError>, A: ToSocketAddr> SwarmSocket {
-    pub fn send_packet(&mut self, body: B, dest: A) -> IoResult<()> {
+impl SwarmSocket {
+    pub fn send_packet<B:Encodable, A: ToSocketAddr>(&mut self, body: B, dest: A) -> SwarmResult<()> {
         let packet = Packet { body: body };
-        let encoded = try!(encode(&packet));
+        let limit = bincode::SizeLimit::UpperBound(MAX_PACKET_SIZE as u64);
+        let encoded = try!(encode(&packet, limit));
         if encoded.len() > MAX_PACKET_SIZE {
-            Err(IoError {
+            Err(SwarmError::IoError(IoError {
                 kind: IoErrorKind::OtherIoError,
                 desc: "Packet exceed maximum size",
                 detail: Some(format!("Maximum size is {} bytes", MAX_PACKET_SIZE)),
-            })
+            }))
         } else {
-            self.socket.send_to(encoded.as_slice(), dest)
+            io_to_swarm_result(self.socket.send_to(encoded.as_slice(), dest))
         }
     }
-
 }
 
 #[cfg(test)]
@@ -88,9 +130,8 @@ mod test {
     use std::io::net::ip::{SocketAddr, Ipv4Addr};
     use std::io::net::udp::UdpSocket;
     use std::io::test::next_test_port;
-    use std::io::IoResult;
     use std::vec::Vec;
-    use super::SwarmSocket;
+    use super::{SwarmSocket, SwarmResult};
 
     fn local_socket() -> SocketAddr {
         SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: next_test_port() }
@@ -100,7 +141,7 @@ mod test {
         SwarmSocket::new(local_socket())
     }
 
-    #[deriving(Show, RustcDecodable, RustcEncodable)]
+    #[derive(Show, RustcDecodable, RustcEncodable)]
     struct Test<T> {
         body: T
     }
@@ -114,7 +155,7 @@ mod test {
 
         let res = from_socket.send_packet(body, socket_addr);
         assert!(res.is_ok());
-        let res: IoResult<Test<u8>> = to_socket.recv_msg();
+        let res: SwarmResult<Test<u8>> = to_socket.recv_msg();
         assert!(res.is_ok());
     }
 }

@@ -12,7 +12,7 @@ use std::vec::Vec;
 use std::io::IoResult;
 use std::io::net::ip::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddr};
 
-#[deriving(Clone, Eq, PartialEq, Show)]
+#[derive(Clone, Eq, PartialEq, Show)]
 pub struct SwarmAddr(SocketAddr);
 
 impl<'a> ToSocketAddr for &'a SwarmAddr {
@@ -29,7 +29,7 @@ impl<'a> ToSocketAddr for &'a SwarmAddr {
     }
 }
 
-#[deriving(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
 pub struct SwarmAgent<L> {
     swarm_id: ByteId,
     loc: L,
@@ -62,8 +62,8 @@ impl<L> SwarmAgent<L> {
     }
 }
 
-impl<E, S:Encoder<E>> Encodable<S,E> for SwarmAddr {
-    fn encode(&self, s: &mut S) -> Result<(),E> {
+impl Encodable for SwarmAddr {
+    fn encode<S:Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         let &SwarmAddr(ref addr) = self;
         match addr.ip {
             Ipv4Addr(a,b,c,d) => {
@@ -80,8 +80,8 @@ impl<E, S:Encoder<E>> Encodable<S,E> for SwarmAddr {
     }
 }
 
-impl<E, D:Decoder<E>> Decodable<D,E> for SwarmAddr {
-    fn decode(dec: &mut D) -> Result<SwarmAddr,E> {
+impl Decodable for SwarmAddr {
+    fn decode<D:Decoder>(dec: &mut D) -> Result<SwarmAddr,D::Error> {
         let (a,b,c,d) = (try!(dec.read_u8()),
                          try!(dec.read_u8()),
                          try!(dec.read_u8()),
@@ -93,7 +93,7 @@ impl<E, D:Decoder<E>> Decodable<D,E> for SwarmAddr {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     extern crate bincode;
 
     use agent::{SwarmAgent, SwarmAddr};
@@ -171,9 +171,10 @@ mod tests {
         let loc = 9i;
 
         let agent = SwarmAgent::new(loc, addr);
-        let encoded = bincode::encode(&agent).ok().unwrap();
+        let limit = bincode::SizeLimit::Infinite;
+        let encoded = bincode::encode(&agent, limit).ok().unwrap();
         let dec_agnt: SwarmAgent<int> =
-            bincode::decode(encoded).ok().unwrap();
+            bincode::decode(encoded.as_slice()).ok().unwrap();
 
         assert_eq!(agent.address(), dec_agnt.address());
         assert_eq!(agent.location(), dec_agnt.location());

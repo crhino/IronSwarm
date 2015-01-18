@@ -75,7 +75,7 @@ impl<T: ReactToSwarm<Loc>, Loc: Location> SwarmController<T, Loc>
 
 }
 
-#[deriving(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
 pub enum SwarmEvent<Loc> {
     Artifact(SwarmArtifact<Loc>),
     ArtifactGone(SwarmArtifact<Loc>),
@@ -84,7 +84,7 @@ pub enum SwarmEvent<Loc> {
     MaliciousAgent(SwarmAgent<Loc>)
 }
 
-#[deriving(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
 pub struct SwarmMsg<Loc> {
     from_agent: SwarmAgent<Loc>,
     event: SwarmEvent<Loc>
@@ -139,7 +139,7 @@ impl<Loc> SwarmMsg<Loc> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use Location;
     use ReactToSwarm;
     use swarm::{SwarmMsg, SwarmController};
