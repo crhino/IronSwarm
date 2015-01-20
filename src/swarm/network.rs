@@ -2,13 +2,14 @@ use rustc_serialize::{Decodable, Encodable};
 use std::vec::Vec;
 use swarm::socket::{SwarmResult, SwarmSocket};
 use swarm::SwarmMsg;
-use agent::SwarmAgent;
+use agent::{SwarmAddr, SwarmAgent};
 use Location;
 use std::io::net::ip::{SocketAddr, ToSocketAddr};
 use bincode::DecoderReader;
 use bincode::EncoderWriter;
 use std::io::{BufReader};
 use std::io::MemWriter;
+use std::fmt::Show;
 
 #[derive(Clone, Eq, PartialEq, Show, RustcDecodable, RustcEncodable)]
 pub enum IronSwarmRPC<Loc> {
@@ -49,28 +50,38 @@ impl<Loc> SwarmNetwork<Loc> {
 
 // Send RPC's.
 impl<Loc: Encodable + Clone> SwarmNetwork<Loc> {
-    fn send_heartbeat<A: ToSocketAddr>(&mut self, hrtbt: SwarmAgent<Loc>, dest: A) -> SwarmResult<()> {
+    fn send_heartbeat<A: ToSocketAddr>(&mut self,
+                                       hrtbt: SwarmAgent<Loc>,
+                                       dest: A) -> SwarmResult<()> {
         let rpc = IronSwarmRPC::HRTBT(hrtbt);
         self.socket.send_packet(rpc, dest)
     }
 
-    fn send_heartbeat_ack<A: ToSocketAddr>(&mut self, neighbors: Vec<SwarmAgent<Loc>>,
-                                         dest: A) -> SwarmResult<()> {
+    fn send_heartbeat_ack<A: ToSocketAddr>(&mut self,
+                                           neighbors: Vec<SwarmAgent<Loc>>,
+                                           dest: A) -> SwarmResult<()> {
         let rpc = IronSwarmRPC::HRTBTACK(neighbors);
         self.socket.send_packet(rpc, dest)
     }
 
-    fn send_info<A: ToSocketAddr>(&mut self, loc: Loc, msg: SwarmMsg<Loc>, dest: A) -> SwarmResult<()> {
+    fn send_info<A: ToSocketAddr>(&mut self,
+                                  loc: Loc,
+                                  msg: SwarmMsg<Loc>,
+                                  dest: A) -> SwarmResult<()> {
         let rpc = IronSwarmRPC::INFO(loc, msg);
         self.socket.send_packet(rpc, dest)
     }
 
-    fn send_broadcast<A: ToSocketAddr>(&mut self, msg: SwarmMsg<Loc>, dest: A) -> SwarmResult<()> {
+    fn send_broadcast<A: ToSocketAddr>(&mut self,
+                                       msg: SwarmMsg<Loc>,
+                                       dest: A) -> SwarmResult<()> {
         let rpc = IronSwarmRPC::BROADCAST(msg);
         self.socket.send_packet(rpc, dest)
     }
 
-    fn send_join<A: ToSocketAddr>(&mut self, agn: SwarmAgent<Loc>, dest: A) -> SwarmResult<()> {
+    fn send_join<A: ToSocketAddr>(&mut self,
+                                  agn: SwarmAgent<Loc>,
+                                  dest: A) -> SwarmResult<()> {
         let rpc = IronSwarmRPC::JOIN(agn);
         self.socket.send_packet(rpc, dest)
     }
@@ -79,11 +90,22 @@ impl<Loc: Encodable + Clone> SwarmNetwork<Loc> {
         let agn = self.local_agent.clone();
         self.send_join(agn, address);
     }
+
+    fn heartbeat(&mut self) -> SwarmResult<()> {
+        let addresses: Vec<SwarmAddr> = self.neighbors.iter().
+            map(|n| n.address().clone()).collect();
+
+        let agn = self.local_agent.clone();
+        for dest in addresses.iter() {
+            try!(self.send_heartbeat(agn.clone(), dest));
+        }
+        Ok(())
+    }
 }
 
 
 // React to received RPC's.
-impl<Loc: Location + Encodable + Decodable + Clone> SwarmNetwork<Loc> {
+impl<Loc: Show + Location + Encodable + Decodable + PartialEq + Clone> SwarmNetwork<Loc> {
     fn next_msg(&mut self) -> SwarmResult<IronSwarmRPC<Loc>> {
         self.socket.recv_msg()
     }
@@ -96,8 +118,20 @@ impl<Loc: Location + Encodable + Decodable + Clone> SwarmNetwork<Loc> {
         };
 
         match rpc {
-            IronSwarmRPC::HRTBT(agn) => {}
-            IronSwarmRPC::HRTBTACK(ack_vec) => {}
+            IronSwarmRPC::HRTBT(agn) => {
+                self.respond_to_heartbeat(agn);
+            }
+            IronSwarmRPC::HRTBTACK(ack_vec) => {
+                let new_neighbors: Vec<SwarmAgent<Loc>> = {
+                    let niter = self.neighbors.iter();
+                    ack_vec.
+                        into_iter().
+                        filter(|n| {
+                            *n != self.local_agent || niter.all(|old| *old != *n)
+                        }).collect()
+                };
+                self.neighbors.push_all(new_neighbors.as_slice());
+            }
             IronSwarmRPC::JOIN(join_agn) => {
                 self.route_join_request(join_agn)
             }
@@ -115,11 +149,23 @@ impl<Loc: Location + Encodable + Decodable + Clone> SwarmNetwork<Loc> {
             min_by(|a| a.location().distance(loc))
     }
 
+    fn respond_to_heartbeat(&mut self, agn: SwarmAgent<Loc>) {
+        {
+            let dest = agn.address();
+            let neighbors = self.neighbors.clone();
+
+            self.send_heartbeat_ack(neighbors, dest);
+        }
+
+        if self.neighbors.iter().all(|n| *n != agn) {
+            self.neighbors.push(agn);
+        }
+    }
+
     fn route_join_request(&mut self, join_agn: SwarmAgent<Loc>) {
         let closest_agent = self.find_closer_agent(join_agn.location());
 
         match closest_agent {
-            // Send JOIN request to closest known agent.
             Some(send_agn) => {
                 self.send_join(join_agn, send_agn.address());
             }
@@ -267,5 +313,29 @@ mod test {
 
         assert_eq!(network1.neighbors.len(), 1);
         assert_eq!(network2.neighbors.len(), 1);
+    }
+
+    #[test]
+    fn htbt_and_ack_add_neighbor_test() {
+        let mut network1 = SwarmNetwork::new(0is, local_socket());
+        let mut network2 = SwarmNetwork::new(10is, local_socket());
+        network1.neighbors.push(network2.local_agent.clone());
+
+        // Neighbor of ACK'd swarm agent
+        let mut network3 = SwarmNetwork::new(9is, local_socket());
+        network2.neighbors.push(network3.local_agent.clone());
+
+        // New agent that is not in neighbor list.
+        let mut network4 = SwarmNetwork::new(11is, local_socket());
+        network4.neighbors.push(network1.local_agent.clone());
+
+        network1.heartbeat();
+        network2.dispatch_rpc();
+        network1.dispatch_rpc();
+
+        network4.heartbeat();
+        network1.dispatch_rpc();
+
+        assert_eq!(network1.neighbors.len(), 3);
     }
 }
