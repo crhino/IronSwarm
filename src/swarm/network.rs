@@ -26,6 +26,8 @@ pub struct SwarmNetwork<Loc> {
     neighbors: Vec<SwarmAgent<Loc>>
 }
 
+const MAX_NEIGHBORS: u8 = 3;
+
 impl<Loc> SwarmNetwork<Loc> {
     fn new<A: ToSocketAddr>(loc: Loc, address: A) -> SwarmNetwork<Loc> {
         let mut socket = SwarmSocket::new(address);
@@ -110,12 +112,8 @@ impl<Loc: Show + Location + Encodable + Decodable + PartialEq + Clone> SwarmNetw
         self.socket.recv_msg()
     }
 
-    fn dispatch_rpc(&mut self) {
-        let res = self.next_msg();
-        let rpc = match res {
-            Ok(r) => r,
-            Err(e) => panic!("Could not get next_msg: {:?}", e)
-        };
+    fn dispatch_rpc(&mut self) -> SwarmResult<()> {
+        let rpc = try!(self.next_msg());
 
         match rpc {
             IronSwarmRPC::HRTBT(agn) => {
@@ -138,18 +136,22 @@ impl<Loc: Show + Location + Encodable + Decodable + PartialEq + Clone> SwarmNetw
             IronSwarmRPC::INFO(loc, msg) => {}
             IronSwarmRPC::BROADCAST(msg) => {}
         }
+
+        Ok(())
     }
 
-    fn find_closer_agent(&self, loc: &Loc) -> Option<SwarmAgent<Loc>> {
+    fn find_closest_neighbor(&self, loc: &Loc) -> Option<SwarmAgent<Loc>> {
         self.neighbors.
             iter().
-            filter(|&a| a.location().distance(loc) <
-                   self.local_agent.location().distance(loc)).
             cloned().
             min_by(|a| a.location().distance(loc))
     }
 
     fn respond_to_heartbeat(&mut self, agn: SwarmAgent<Loc>) {
+        if self.neighbors.len() >= MAX_NEIGHBORS as usize {
+            return
+        }
+
         {
             let dest = agn.address();
             let neighbors = self.neighbors.clone();
@@ -163,11 +165,19 @@ impl<Loc: Show + Location + Encodable + Decodable + PartialEq + Clone> SwarmNetw
     }
 
     fn route_join_request(&mut self, join_agn: SwarmAgent<Loc>) {
-        let closest_agent = self.find_closer_agent(join_agn.location());
+        let closest_agent = self.find_closest_neighbor(join_agn.location());
 
         match closest_agent {
             Some(send_agn) => {
-                self.send_join(join_agn, send_agn.address());
+                let send_dist = send_agn.location().distance(join_agn.location());
+                let self_dist = self.local_agent.location().distance(join_agn.location());
+
+                if send_dist < self_dist ||
+                    self.neighbors.len() >= MAX_NEIGHBORS as usize {
+                        self.send_join(join_agn, send_agn.address());
+                    } else {
+                        self.neighbors.push(join_agn);
+                    }
             }
             // TODO: Already have too many neighbors
             None => {
@@ -316,6 +326,25 @@ mod test {
     }
 
     #[test]
+    fn join_self_closest_over_max_test() {
+        let mut network1 = SwarmNetwork::new(10is, local_socket());
+        let mut network2 = SwarmNetwork::new(1is, local_socket());
+        let mut network3 = SwarmNetwork::new(2is, local_socket());
+        let mut network4 = SwarmNetwork::new(3is, local_socket());
+        let mut joining = SwarmNetwork::new(20is, local_socket());
+        network1.neighbors.push(network2.local_agent.clone());
+        network1.neighbors.push(network3.local_agent.clone());
+        network1.neighbors.push(network4.local_agent.clone());
+
+        joining.join(network1.address());
+        network1.dispatch_rpc();
+        network4.dispatch_rpc();
+
+        assert_eq!(network1.neighbors.len(), 3);
+        assert_eq!(network4.neighbors.len(), 1);
+    }
+
+    #[test]
     fn htbt_and_ack_add_neighbor_test() {
         let mut network1 = SwarmNetwork::new(0is, local_socket());
         let mut network2 = SwarmNetwork::new(10is, local_socket());
@@ -337,5 +366,31 @@ mod test {
         network1.dispatch_rpc();
 
         assert_eq!(network1.neighbors.len(), 3);
+    }
+
+    #[test]
+    fn hrtbt_over_max_no_ack_test() {
+        let mut network1 = SwarmNetwork::new(10is, local_socket());
+        let mut network2 = SwarmNetwork::new(1is, local_socket());
+        let mut network3 = SwarmNetwork::new(2is, local_socket());
+        let mut network4 = SwarmNetwork::new(3is, local_socket());
+        let mut network5 = SwarmNetwork::new(20is, local_socket());
+
+        network1.neighbors.push(network2.local_agent.clone());
+        network1.neighbors.push(network3.local_agent.clone());
+        network1.neighbors.push(network4.local_agent.clone());
+
+        network5.neighbors.push(network1.local_agent.clone());
+
+        network5.heartbeat();
+        network1.dispatch_rpc();
+        let res = network5.dispatch_rpc();
+        assert!(res.is_err());
+
+        assert_eq!(network1.neighbors.len(), 3);
+        assert_eq!(network2.neighbors.len(), 0);
+        assert_eq!(network3.neighbors.len(), 0);
+        assert_eq!(network4.neighbors.len(), 0);
+        assert_eq!(network5.neighbors.len(), 1);
     }
 }

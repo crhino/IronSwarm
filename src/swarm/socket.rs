@@ -11,6 +11,7 @@ use std::mem;
 use std::error::FromError;
 
 pub const MAX_PACKET_SIZE: usize = 1024;
+const SOCKET_TIMEOUT: Option<u64> = Some(1000);
 
 #[derive(RustcDecodable, RustcEncodable, Show)]
 struct Packet<B> {
@@ -90,6 +91,7 @@ impl SwarmSocket {
 impl SwarmSocket {
     pub fn recv_msg<'a, B>(&mut self) -> SwarmResult<B>
     where B: Decodable {
+        self.socket.set_timeout(SOCKET_TIMEOUT);
         match self.socket.recv_from(&mut self.recv_buf) {
             Ok((amt, _)) => {
                 //XXX: transmuting the buffer in order to get appropriate lifetime.
@@ -120,6 +122,7 @@ impl SwarmSocket {
                 detail: Some(format!("Maximum size is {} bytes", MAX_PACKET_SIZE)),
             }))
         } else {
+            self.socket.set_timeout(SOCKET_TIMEOUT);
             io_to_swarm_result(self.socket.send_to(encoded.as_slice(), dest))
         }
     }
