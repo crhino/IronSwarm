@@ -125,7 +125,7 @@ impl<Loc: Show + Location + Encodable + Decodable + PartialEq + Clone> SwarmNetw
                     ack_vec.
                         into_iter().
                         filter(|n| {
-                            *n != self.local_agent || niter.all(|old| *old != *n)
+                            *n != self.local_agent && niter.all(|old| *old != *n)
                         }).collect()
                 };
                 self.neighbors.push_all(new_neighbors.as_slice());
@@ -154,9 +154,14 @@ impl<Loc: Show + Location + Encodable + Decodable + PartialEq + Clone> SwarmNetw
 
         {
             let dest = agn.address();
-            let neighbors = self.neighbors.clone();
+            let mut neighbors = self.neighbors.clone();
+            // Add the sending agent to the list of neighbors.
+            neighbors.push(self.local_agent.clone());
+            let res = self.send_heartbeat_ack(neighbors, dest);
 
-            self.send_heartbeat_ack(neighbors, dest);
+            if res.is_err() {
+                panic!("Err: {:?}", res.err().unwrap());
+            }
         }
 
         if self.neighbors.iter().all(|n| *n != agn) {
@@ -357,15 +362,43 @@ mod test {
         // New agent that is not in neighbor list.
         let mut network4 = SwarmNetwork::new(11is, local_socket());
         network4.neighbors.push(network1.local_agent.clone());
+        network4.neighbors.push(network2.local_agent.clone());
 
         network1.heartbeat();
-        network2.dispatch_rpc();
-        network1.dispatch_rpc();
+        let mut res = network2.dispatch_rpc();
+        assert!(res.is_ok());
+        res = network1.dispatch_rpc();
+        assert!(res.is_ok());
 
         network4.heartbeat();
-        network1.dispatch_rpc();
+        res = network1.dispatch_rpc();
+        assert!(res.is_ok());
+        res = network2.dispatch_rpc();
+        assert!(res.is_ok());
+        res = network4.dispatch_rpc();
+        assert!(res.is_ok());
 
         assert_eq!(network1.neighbors.len(), 3);
+        assert_eq!(network2.neighbors.len(), 3);
+    }
+
+    #[test]
+    fn hrtbt_ack_filter_neighbors_test() {
+        let mut network1 = SwarmNetwork::new(0is, local_socket());
+        let mut network2 = SwarmNetwork::new(10is, local_socket());
+        let mut network3 = SwarmNetwork::new(9is, local_socket());
+
+        network1.neighbors.push(network2.local_agent.clone());
+        network1.neighbors.push(network3.local_agent.clone());
+        network2.neighbors.push(network3.local_agent.clone());
+
+        network1.heartbeat();
+        let mut res = network2.dispatch_rpc();
+        assert!(res.is_ok());
+        res = network1.dispatch_rpc();
+        assert!(res.is_ok());
+
+        assert_eq!(network1.neighbors.len(), 2);
     }
 
     #[test]
