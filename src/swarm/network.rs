@@ -28,7 +28,7 @@ pub struct SwarmNetwork<Loc> {
 
 const MAX_NEIGHBORS: u8 = 3;
 
-impl<Loc> SwarmNetwork<Loc> {
+impl<Loc: Location + Clone> SwarmNetwork<Loc> {
     fn new<A: ToSocketAddr>(loc: Loc, address: A) -> SwarmNetwork<Loc> {
         let mut socket = SwarmSocket::new(address);
         let addr = socket.socket_name();
@@ -48,10 +48,23 @@ impl<Loc> SwarmNetwork<Loc> {
     fn update_location(&mut self, location: Loc) {
         self.local_agent.update_location(location);
     }
+
+    fn self_loc_is_closer(&mut self, agn: &SwarmAgent<Loc>, loc: &Loc) -> bool {
+        let other_dist = agn.location().distance(loc);
+        let self_dist = self.local_agent.location().distance(loc);
+        self_dist < other_dist
+    }
+
+    fn find_closest_neighbor(&self, loc: &Loc) -> Option<SwarmAgent<Loc>> {
+        self.neighbors.
+            iter().
+            cloned().
+            min_by(|a| a.location().distance(loc))
+    }
 }
 
 // Send RPC's.
-impl<Loc: Encodable + Clone> SwarmNetwork<Loc> {
+impl<Loc: Location + Encodable + Clone> SwarmNetwork<Loc> {
     fn send_heartbeat<A: ToSocketAddr>(&mut self,
                                        hrtbt: SwarmAgent<Loc>,
                                        dest: A) -> SwarmResult<()> {
@@ -118,6 +131,7 @@ impl<Loc: Show + Location + Encodable + Decodable + PartialEq + Clone> SwarmNetw
         match rpc {
             IronSwarmRPC::HRTBT(agn) => {
                 self.respond_to_heartbeat(agn);
+                Ok(())
             }
             IronSwarmRPC::HRTBTACK(ack_vec) => {
                 let new_neighbors: Vec<SwarmAgent<Loc>> = {
@@ -129,22 +143,37 @@ impl<Loc: Show + Location + Encodable + Decodable + PartialEq + Clone> SwarmNetw
                         }).collect()
                 };
                 self.neighbors.push_all(new_neighbors.as_slice());
+                Ok(())
             }
             IronSwarmRPC::JOIN(join_agn) => {
-                self.route_join_request(join_agn)
+                self.route_join_request(join_agn);
+                Ok(())
             }
-            IronSwarmRPC::INFO(loc, msg) => {}
-            IronSwarmRPC::BROADCAST(msg) => {}
+            IronSwarmRPC::INFO(loc, msg) => {
+                self.route_info_msg(loc, msg)
+            }
+            IronSwarmRPC::BROADCAST(msg) => {
+                Ok(())
+            }
         }
-
-        Ok(())
     }
 
-    fn find_closest_neighbor(&self, loc: &Loc) -> Option<SwarmAgent<Loc>> {
-        self.neighbors.
-            iter().
-            cloned().
-            min_by(|a| a.location().distance(loc))
+    fn route_info_msg(&mut self, loc: Loc, msg: SwarmMsg<Loc>) -> SwarmResult<()> {
+        let next_agent = self.find_closest_neighbor(&loc);
+        match next_agent {
+            Some(agn) => {
+                if self.self_loc_is_closer(&agn, &loc) {
+                    // Send up to controller
+                    Ok(())
+                } else {
+                    self.send_info(loc, msg, agn.address())
+                }
+            }
+            None => {
+                // Send up to controller
+                Ok(())
+            }
+        }
     }
 
     fn respond_to_heartbeat(&mut self, agn: SwarmAgent<Loc>) {
@@ -174,10 +203,7 @@ impl<Loc: Show + Location + Encodable + Decodable + PartialEq + Clone> SwarmNetw
 
         match closest_agent {
             Some(send_agn) => {
-                let send_dist = send_agn.location().distance(join_agn.location());
-                let self_dist = self.local_agent.location().distance(join_agn.location());
-
-                if send_dist < self_dist ||
+                if !self.self_loc_is_closer(&send_agn, join_agn.location()) ||
                     self.neighbors.len() >= MAX_NEIGHBORS as usize {
                         self.send_join(join_agn, send_agn.address());
                     } else {
@@ -310,7 +336,8 @@ mod test {
         network1.neighbors.push(network2.local_agent.clone());
 
         joining.join(network1.address());
-        network1.dispatch_rpc();
+        let res = network1.dispatch_rpc();
+        assert!(res.is_ok());
 
         assert_eq!(network1.neighbors.len(), 2);
     }
@@ -425,5 +452,61 @@ mod test {
         assert_eq!(network3.neighbors.len(), 0);
         assert_eq!(network4.neighbors.len(), 0);
         assert_eq!(network5.neighbors.len(), 1);
+    }
+
+    #[test]
+    fn info_msg_test() {
+        let mut network1 = SwarmNetwork::new(1is, local_socket());
+        let mut network2 = SwarmNetwork::new(2is, local_socket());
+        let mut network3 = SwarmNetwork::new(3is, local_socket());
+        let mut network4 = SwarmNetwork::new(4is, local_socket());
+
+        network3.neighbors.push(network2.local_agent.clone());
+        network3.neighbors.push(network4.local_agent.clone());
+        network2.neighbors.push(network1.local_agent.clone());
+
+        let agent = SwarmAgent::new(0is, local_socket());
+        let artifact = SwarmArtifact::new(3is);
+        let msg = SwarmMsg::new_artifact_gone_msg(agent, artifact);
+
+        {
+            let loc = network1.local_agent.location().clone();
+            network3.route_info_msg(loc, msg);
+        }
+
+        let mut res = network2.dispatch_rpc();
+        assert!(res.is_ok());
+        res = network1.dispatch_rpc();
+        assert!(res.is_ok());
+        res = network4.dispatch_rpc();
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn info_msg_no_send_test() {
+        let mut network1 = SwarmNetwork::new(1is, local_socket());
+        let mut network2 = SwarmNetwork::new(2is, local_socket());
+        let mut network3 = SwarmNetwork::new(10is, local_socket());
+        let mut network4 = SwarmNetwork::new(4is, local_socket());
+
+        network3.neighbors.push(network2.local_agent.clone());
+        network3.neighbors.push(network4.local_agent.clone());
+
+        let agent = SwarmAgent::new(0is, local_socket());
+        let artifact = SwarmArtifact::new(3is);
+        let msg = SwarmMsg::new_artifact_gone_msg(agent, artifact);
+
+        {
+            let loc = 9is;
+            network3.route_info_msg(loc, msg);
+        }
+
+        // Msg is not sent anywhere
+        let mut res = network2.dispatch_rpc();
+        assert!(res.is_err());
+        res = network1.dispatch_rpc();
+        assert!(res.is_err());
+        res = network4.dispatch_rpc();
+        assert!(res.is_err());
     }
 }
